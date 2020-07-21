@@ -35,6 +35,7 @@ class ChildFrame(wx.MDIChildFrame):
     def __init__(self, parent, title, graph):
         super(ChildFrame, self).__init__(parent, title = title, size = graph['size']) #, style=wx.DEFAULT_FRAME_STYLE|wx.ICON_NONE)
         self.graph = graph
+        self.pen_color = wx.Colour('black')
         self.foreground_color = wx.Colour('gray')
         self.background_color = wx.Colour('white')
         self.dict = {}
@@ -268,9 +269,10 @@ class ChildFrame(wx.MDIChildFrame):
         self.dc = dc
         dc.Clear()
         dc.SetBrush(wx.Brush(self.foreground_color))
-        dc.SetPen(wx.Pen(self.foreground_color))
+        dc.SetPen(wx.Pen(self.pen_color))
         dc.SetTextForeground(self.background_color)
-        dc.SetFont(wx.Font(wx.FontInfo(10)))
+        font = wx.Font(10, wx.FONTFAMILY_ROMAN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, False)
+        dc.SetFont(font)
         self.canvas.PrepareDC(dc)
 
         graph_size = self.graph['size']
@@ -459,11 +461,13 @@ class MainFrame(wx.MDIParentFrame):
                     selected[selected_at].Maximize()
 
         elif tid == 3:
+            frame.pen_color = wx.Colour('gray')
             frame.foreground_color = wx.Colour('white')
-            frame.background_color = wx.Colour('gray')
+            frame.background_color = wx.Colour(86, 86, 87)
             frame.Refresh()
 
         elif tid == 4:
+            frame.pen_color = wx.Colour('black')
             frame.foreground_color = wx.Colour('gray')
             frame.background_color = wx.Colour('white')
             frame.Refresh()
