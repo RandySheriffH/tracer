@@ -418,11 +418,13 @@ class MainFrame(wx.MDIParentFrame):
 
         def update_progress_func(done):
             return progress.Update(done, str(done) + " nodes analyzed ...")
-
-        graph = Parse(model_path, init_progress_func, update_progress_func)
-        cancelled = progress.WasCancelled()
-        progress.Destroy()
-        if cancelled is False: ChildFrame(self, graph['name'], graph)
+        try:
+            graph = Parse(model_path, init_progress_func, update_progress_func)
+            cancelled = progress.WasCancelled()
+            progress.Destroy()
+            if cancelled is False: ChildFrame(self, graph['name'], graph)
+        except graphviz.backend.ExecutableNotFound:
+            wx.MessageDialog('Please install graphviz from www.graphviz.org and add it to PATH').ShowModal()
 
     def OnMove(self, event):
         global selected, selected_at
