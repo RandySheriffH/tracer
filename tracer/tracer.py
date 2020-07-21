@@ -2,7 +2,7 @@ import os, wx, sys, math
 from wx import Point, Size, propgrid
 from parsers import Parse
 from utils import *
-
+import graphviz
 
 class About(wx.Dialog):
     def __init__(self, parent):
