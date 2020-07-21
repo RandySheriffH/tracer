@@ -424,7 +424,7 @@ class MainFrame(wx.MDIParentFrame):
             progress.Destroy()
             if cancelled is False: ChildFrame(self, graph['name'], graph)
         except graphviz.backend.ExecutableNotFound:
-            wx.MessageDialog(self, 'Please install graphviz from www.graphviz.org and add it to PATH').ShowModal()
+            wx.MessageDialog(self, 'Please install latest graphviz from www.graphviz.org and add it to PATH').ShowModal()
 
     def OnMove(self, event):
         global selected, selected_at
