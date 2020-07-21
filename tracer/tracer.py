@@ -14,7 +14,6 @@ class About(wx.Dialog):
         self.Center()
         self.Show()
 
-
 class MyProperty(wx.propgrid.LongStringProperty):
 
     def __init__(self, frame, label=propgrid.PG_LABEL, name=propgrid.PG_LABEL, value=''):
@@ -25,10 +24,8 @@ class MyProperty(wx.propgrid.LongStringProperty):
         self.frame.OpenChildFrame(label).AdjustCanvas()
         return (False, '')
 
-
 selected = []
 selected_at = -1
-
 
 class ChildFrame(wx.MDIChildFrame):
 
@@ -276,7 +273,7 @@ class ChildFrame(wx.MDIChildFrame):
         self.canvas.PrepareDC(dc)
 
         graph_size = self.graph['size']
-        
+
         if canvas_size[0] < graph_size[0] and canvas_size[1] < graph_size[1]:
             self.ThumbPanel.SetPosition((0,0))
             self.ThumbPanel.SetSize(self.CalcThumbSize())
@@ -338,7 +335,6 @@ class ChildFrame(wx.MDIChildFrame):
             selected.append(self)
             selected_at = len(selected) - 1
 
-
 class MainFrame(wx.MDIParentFrame):
 
     def __init__(self, parent, title):
@@ -385,8 +381,7 @@ class MainFrame(wx.MDIParentFrame):
 
     def PrepareSearch(self, event):
         frame = self.GetActiveChild()
-        if frame is None:
-            return
+        if frame is None: return
         self.Search.AutoComplete(list(frame.dict.keys()))
 
     def OnSearch(self, event):
