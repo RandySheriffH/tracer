@@ -62,10 +62,10 @@ class ChildFrame(wx.MDIChildFrame):
     def InitUI(self):
         icon = wx.Icon()
         if self.graph['type'] == 'onnx':
-            icon.CopyFromBitmap(wx.Bitmap("icons/onnx.png", wx.BITMAP_TYPE_ANY))
+            icon.CopyFromBitmap(wx.Bitmap(PWD() + "icons/onnx.png", wx.BITMAP_TYPE_ANY))
         elif self.graph['type'] == 'tensorflow':
-            icon.CopyFromBitmap(wx.Bitmap("icons/tf.png", wx.BITMAP_TYPE_ANY))
-        else: icon.CopyFromBitmap(wx.Bitmap("icons/model.png", wx.BITMAP_TYPE_ANY))
+            icon.CopyFromBitmap(wx.Bitmap(PWD() + "icons/tf.png", wx.BITMAP_TYPE_ANY))
+        else: icon.CopyFromBitmap(wx.Bitmap(PWD() + + "icons/model.png", wx.BITMAP_TYPE_ANY))
         self.SetIcon(icon)
         self.canvas = wx.ScrolledCanvas(self, True)
         self.property = propgrid.PropertyGrid(self, size=(300,500))
@@ -344,7 +344,7 @@ class MainFrame(wx.MDIParentFrame):
 
     def InitUI(self):
         icon = wx.Icon()
-        icon.CopyFromBitmap(wx.Bitmap("icons/tracer.30.png", wx.BITMAP_TYPE_ANY))
+        icon.CopyFromBitmap(wx.Bitmap(PWD() + "icons/tracer.30.png", wx.BITMAP_TYPE_ANY))
         self.SetIcon(icon)
         self.SetTitle('tracer')
         self.dc = None
@@ -359,10 +359,10 @@ class MainFrame(wx.MDIParentFrame):
         self.MenuBar.Append(self.About, 'About')
         self.MenuBar.Bind(wx.EVT_MENU, self.OnOrder)
         self.ToolBar = wx.ToolBar(self, -1)
-        self.ToolBar.AddTool(1, 'back', wx.Bitmap('icons/back.png'), 'back')
-        self.ToolBar.AddTool(2, 'forward', wx.Bitmap('icons/forward.png'), 'forward')
-        self.ToolBar.AddTool(3, 'darkdrop', wx.Bitmap('icons/blackdrop.png'), 'dark backdrop')
-        self.ToolBar.AddTool(4, 'lightdrop', wx.Bitmap('icons/whitedrop.png'), 'light backdrop')
+        self.ToolBar.AddTool(1, 'back', wx.Bitmap(PWD() + 'icons/back.png'), 'back')
+        self.ToolBar.AddTool(2, 'forward', wx.Bitmap(PWD() + 'icons/forward.png'), 'forward')
+        self.ToolBar.AddTool(3, 'darkdrop', wx.Bitmap(PWD() + 'icons/blackdrop.png'), 'dark backdrop')
+        self.ToolBar.AddTool(4, 'lightdrop', wx.Bitmap(PWD() + 'icons/whitedrop.png'), 'light backdrop')
         self.SetToolBar(self.ToolBar)
         self.ToolBar.Realize()
         self.ToolBar.Bind(wx.EVT_TOOL, self.OnMove)

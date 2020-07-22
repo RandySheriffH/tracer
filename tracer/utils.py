@@ -14,3 +14,6 @@ def GetTemp():
 
 def RemoveTemp():
     shutil.rmtree(GetTemp(), ignore_errors=True)
+
+def PWD():
+    return os.path.dirname(__file__) + '/'
