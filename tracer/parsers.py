@@ -31,7 +31,7 @@ class Parser():
     def GetType(self):
         raise NotImplementedError('Not implemented!')
 
-    def Parse(self, model_file_path, init_progress_callback, updage_progress_callback, max_node_per_graph=998):
+    def Parse(self, model_file_path, init_progress_callback, updage_progress_callback, max_node_per_graph=600):
         model_graph, total_ops = self.LoadGraph(model_file_path)
         init_progress_callback(total_ops)
         ret, _ = updage_progress_callback(0)
@@ -333,7 +333,7 @@ class TFParser(Parser):
                 if k in ['body', 'cond', 'then_branch', 'else_branch']:
                     attrs[k] = {'type': 'subgraph', 'value': v.name}
                     sgs[v.name] = self.GetSubGraph(v.name)
-                else: raise TypeError('Unknow TF NameAttrList')
+                # else: raise TypeError('Unknow TF NameAttrList')
             elif t is list:
                 if len(v) == 0: pass
                 elif type(v[0]) is tf.python.framework.dtypes.DType:
@@ -345,7 +345,7 @@ class TFParser(Parser):
                 elif type(v[0]) is int:
                     value = ','.join([str(e) for e in v])
                     attrs[k] = {'type': 'string', 'value': value}
-                else: raise TypeError('unknown tf list element type:', type(v[0]))
+                # else: raise TypeError('unknown tf list element type:', type(v[0]))
             elif t is bool:
                 attrs[k] = {'type': 'string', 'value': str(v)}
             elif t is bytes:
@@ -359,7 +359,7 @@ class TFParser(Parser):
             elif t is tf.core.framework.tensor_shape_pb2.TensorShapeProto:
                 value = '.'.join([str(d.size) for d in v.dim])
                 attrs[k] = {'type': 'string', 'value': value}
-            else: raise TypeError('unknown tf attr type:', t)
+            # else: raise TypeError('unknown tf attr type:', t)
         return attrs, sgs
 
     def TFType2Str(self, v):
@@ -388,7 +388,7 @@ class TFParser(Parser):
         elif v is tf.qint32: return 'qint32'
         elif v is tf.resource: return 'resource'
         elif v is tf.variant: return 'variant'
-        else: raise TypeError("Unknow tf dtype")
+        else: return str(v)
 
     def LoadGraph(self, model_file_path):
         import tensorflow as tf
