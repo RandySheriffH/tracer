@@ -21,16 +21,14 @@ class MyProperty(wx.propgrid.LongStringProperty):
         self.frame = frame
 
     def DisplayEditorDialog(self, prop, label):
-        self.frame.OpenChildFrame(label).AdjustCanvas()
+        graph = self.frame.GetSubgraph(self.frame.graph, label)
+        self.frame.GetParent().ShowFrame(graph)
         return (False, '')
-
-selected = []
-selected_at = -1
 
 class ChildFrame(wx.MDIChildFrame):
 
     def __init__(self, parent, title, graph):
-        super(ChildFrame, self).__init__(parent, title = title, size = graph['size']) #, style=wx.DEFAULT_FRAME_STYLE|wx.ICON_NONE)
+        super(ChildFrame, self).__init__(parent, title = title, size = graph['size'])
         self.graph = graph
         self.pen_color = wx.Colour('black')
         self.foreground_color = wx.Colour('gray')
@@ -38,6 +36,7 @@ class ChildFrame(wx.MDIChildFrame):
         self.dict = {}
         self.GetDict(self.graph, self.dict)
         self.InitUI()
+        self.GetParent().AddHistory([self.GetId(), self.graph['name'], self.graph['selected']])
 
     def GetDict(self, graph, dict):
 
@@ -51,10 +50,10 @@ class ChildFrame(wx.MDIChildFrame):
         for v in graph['vertices']:
             vertice = graph['vertices'][v]
             for path in GetPrefix(v):
-                if path not in dict: dict[path] = [v, graph['name']]
+                if path not in dict: dict[path] = [v, graph]
             for o in vertice['outputs']:
                 for path in GetPrefix(o):
-                    if path not in dict: dict[path] = [v, graph['name']]
+                    if path not in dict: dict[path] = [v, graph]
 
         for sg in graph['subgraphs']:
             self.GetDict(graph['subgraphs'][sg], dict)
@@ -73,13 +72,9 @@ class ChildFrame(wx.MDIChildFrame):
         self.box.Add(self.canvas, wx.ID_ANY, flag=wx.EXPAND|wx.ALL|wx.LEFT, border=1)
         self.box.Add(self.property, 0, flag=wx.EXPAND|wx.RIGHT, border=1)
         self.SetSizer(self.box)
-        self.selected = [self.graph['selected']]
-        self.selected_at = 0
         self.dc = None
         self.canvas.Bind(wx.EVT_PAINT, self.OnPaint)
         self.canvas.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDown)
-        self.Bind(wx.EVT_CLOSE, self.OnClose)
-        self.Bind(wx.EVT_SET_FOCUS, self.OnFocus)
         self.ThumbPanel = wx.Panel(self.canvas, style=wx.SIMPLE_BORDER)
         self.ThumbPanel.Bind(wx.EVT_PAINT, self.OnPaintThumb)
         self.ThumbPanel.Bind(wx.EVT_LEFT_DOWN, self.OnKeyDown)
@@ -148,21 +143,15 @@ class ChildFrame(wx.MDIChildFrame):
         dc.SetPen(wx.Pen('red', 1))
         dc.SetBrush(wx.Brush('red', wx.BRUSHSTYLE_TRANSPARENT))
         dc.DrawRectangle(thumb_rect)
-        rect = self.graph['vertices'][self.selected[self.selected_at]]['rect']
+        rect = self.graph['vertices'][self.graph['selected']]['rect']
         dc.DrawCircle(Point((int(rect[0]/self.thumb_ratio), int(rect[1]/self.thumb_ratio))), 2)
 
-    def OpenChildFrame(self, name, selected = ''):
-
-        def GetSubgraph(graph, name):
-            if name in graph['subgraphs']: return graph['subgraphs'][name]
-            for sg in graph['subgraphs']:
-                ret = GetSubgraph(graph['subgraphs'][sg], name)
-                if ret is not None: return ret
-            raise RuntimeError('Subgraph ', name, 'does not exist.')
-
-        target_graph = GetSubgraph(self.graph, name)
-        if selected != '': target_graph['selected'] = selected
-        return ChildFrame(self.GetParent(), name, target_graph)
+    def GetSubgraph(self, graph, name):
+        if name in graph['subgraphs']: return graph['subgraphs'][name]
+        for sg in graph['subgraphs']:
+            ret = self.GetSubgraph(graph['subgraphs'][sg], name)
+            if ret is not None: return ret
+        raise RuntimeError('Subgraph ', name, 'does not exist.')
 
     def OnClick(self, e):
         bid = e.GetId()
@@ -178,11 +167,9 @@ class ChildFrame(wx.MDIChildFrame):
         need_refresh = False
 
         for vertice in self.graph['vertices']:
-            if self.In(self.graph['vertices'][vertice]['rect'], pos):
-                self.selected.append(vertice)
-                self.selected_at = len(self.selected) - 1
-                while len(self.selected) >= 100:
-                    del self.selected[0]
+            if self.In(self.graph['vertices'][vertice]['rect'], pos) and vertice != self.graph['selected']:
+                self.graph['selected'] = vertice
+                self.GetParent().AddHistory([self.GetId(), self.graph['name'], self.graph['selected']])
                 need_refresh = True
                 break
 
@@ -204,14 +191,13 @@ class ChildFrame(wx.MDIChildFrame):
         x_start = xy_strt[0] * xy_unit[0]
         y_start = xy_strt[1] * xy_unit[1]
         target_rect = (x_start, y_start, xy_size[0], xy_size[1])
-        selected = self.selected[self.selected_at]
-        vertice = self.graph['vertices'][selected]
+        vertice = self.graph['vertices'][self.graph['selected']]
 
         if not self.Intersect(target_rect, vertice['rect']):
             self.canvas.Scroll(vertice['rect'][0]/self.x_units, vertice['rect'][1]/self.y_units)
 
     def SetProperty(self):
-        v = self.selected[self.selected_at]
+        v = self.graph['selected']
         name_property = self.property.GetPropertyByLabel('name')
         if name_property is not None and name_property.GetValue() == v:
             return
@@ -292,8 +278,7 @@ class ChildFrame(wx.MDIChildFrame):
             dc.DrawText(self.graph['vertices'][vertice]['type'],
                         INT(self.graph['vertices'][vertice]['label']))
 
-        selected = self.selected[self.selected_at]
-        vertice = self.graph['vertices'][selected]
+        vertice = self.graph['vertices'][self.graph['selected']]
         dc.SetPen(wx.Pen("red", 2))
         dc.DrawRoundedRectangle(vertice['rect'], 3)
         dc.DrawText(vertice['type'], INT(vertice['label']))
@@ -311,29 +296,16 @@ class ChildFrame(wx.MDIChildFrame):
             v, sg = self.dict[key]
             if sg == self.graph['name']:
                 need_refresh = False
-                if self.selected[self.selected_at] != v:
-                    self.selected.append(v)
-                    self.selected_at = len(self.selected) - 1
+                if self.graph['selected'] != v:
+                    self.graph['selected'] = v
                     need_refresh = True
                 if need_refresh:
                     self.canvas.Refresh()
                     self.AdjustCanvas()
             else:
-                frame = self.OpenChildFrame(sg, v)
-                frame.canvas.Refresh()
-                frame.AdjustCanvas()
+                sg['selected'] = v
+                self.GetParent().ShowFrame(sg)
 
-    def OnClose(self, event):
-        global selected, selected_at
-        selected = [f for f in selected if f != self]
-        selected_at = len(selected) - 1
-        event.Skip()
-
-    def OnFocus(self, event):
-        global selected, selected_at
-        if selected_at == -1 or selected[selected_at] != self:
-            selected.append(self)
-            selected_at = len(selected) - 1
 
 class MainFrame(wx.MDIParentFrame):
 
@@ -373,6 +345,7 @@ class MainFrame(wx.MDIParentFrame):
         self.Search.Bind(wx.EVT_SEARCHCTRL_SEARCH_BTN, self.OnSearch)
         self.Bind(wx.EVT_CLOSE, self.OnClose)
         self.search_txtctrl = self.Search.FindWindowByName('text')
+        self.history = []
         self.Show(True)
 
     def OnClose(self, e):
@@ -406,6 +379,17 @@ class MainFrame(wx.MDIParentFrame):
         elif mid == wx.ID_ABOUT:
             About(self)
 
+    def ShowFrame(self, graph):
+        for record in self.history:
+            if record[1] == graph['name']:
+                frame = self.FindWindowById(record[0])
+                if frame is None: continue
+                frame.Maximize()
+                frame.Refresh()
+                frame.AdjustCanvas()
+                return
+        ChildFrame(self, graph['name'], graph).AdjustCanvas()
+
     def Open(self, model_path):
         progress = wx.ProgressDialog("Progress", "Reading model ...", parent=self,\
                                      style=wx.PD_SMOOTH|wx.PD_AUTO_HIDE|wx.PD_CAN_ABORT)
@@ -419,49 +403,47 @@ class MainFrame(wx.MDIParentFrame):
             graph = Parse(model_path, init_progress_func, update_progress_func)
             cancelled = progress.WasCancelled()
             progress.Destroy()
-            if cancelled is False: ChildFrame(self, graph['name'], graph)
+            if cancelled is False: self.ShowFrame(graph)
         except graphviz.backend.ExecutableNotFound:
             wx.MessageDialog(self, 'Please install latest graphviz from www.graphviz.org and add it to PATH').ShowModal()
 
-    def OnMove(self, event):
-        global selected, selected_at
-        frame = self.GetActiveChild()
+    def AddHistory(self, record):
+        self.history.append(record)
+        self.history_at = len(self.history) -1
 
-        if frame is None:
-            return
+    def OnMove(self, event):
         tid = event.GetId()
 
-        if tid == 1:
-
-            if frame.selected_at > 0:
-                frame.selected_at -= 1
-                frame.canvas.Refresh()
-                frame.AdjustCanvas()
-
-            elif selected_at > 0:
-                selected_at -= 1
-                if frame != selected[selected_at]:
-                    selected[selected_at].Maximize()
-
-        elif tid == 2:
-
-            if frame.selected_at < len(frame.selected) - 1:
-                frame.selected_at += 1
-                frame.canvas.Refresh()
-                frame.AdjustCanvas()
-
-            elif selected_at < len(selected) - 1:
-                selected_at += 1
-                if frame != selected[selected_at]:
-                    selected[selected_at].Maximize()
+        if tid in [1, 2]:
+            while True:
+                if tid == 1:
+                    if self.history_at == 0: break
+                    else: self.history_at -= 1
+                elif tid == 2:
+                    if self.history_at == len(self.history) - 1: break
+                    else: self.history_at += 1
+                record = self.history[self.history_at]
+                frame = self.FindWindowById(record[0])
+                if frame is None:
+                    del self.history[self.history_at]
+                else:
+                    frame.graph['selected'] = record[2]
+                    frame.Maximize()
+                    frame.canvas.Refresh()
+                    frame.AdjustCanvas()
+                    break
 
         elif tid == 3:
+            frame = self.GetActiveChild()
+            if frame is None: return
             frame.pen_color = wx.Colour('gray')
             frame.foreground_color = wx.Colour('white')
             frame.background_color = wx.Colour(86, 86, 87)
             frame.Refresh()
 
         elif tid == 4:
+            frame = self.GetActiveChild()
+            if frame is None: return
             frame.pen_color = wx.Colour('black')
             frame.foreground_color = wx.Colour('gray')
             frame.background_color = wx.Colour('white')
