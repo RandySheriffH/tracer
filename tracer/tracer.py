@@ -64,7 +64,7 @@ class ChildFrame(wx.MDIChildFrame):
             icon.CopyFromBitmap(wx.Bitmap(PWD() + "icons/onnx.png", wx.BITMAP_TYPE_ANY))
         elif self.graph['type'] == 'tensorflow':
             icon.CopyFromBitmap(wx.Bitmap(PWD() + "icons/tf.png", wx.BITMAP_TYPE_ANY))
-        else: icon.CopyFromBitmap(wx.Bitmap(PWD() + + "icons/model.png", wx.BITMAP_TYPE_ANY))
+        else: icon.CopyFromBitmap(wx.Bitmap(PWD() + "icons/model.png", wx.BITMAP_TYPE_ANY))
         self.SetIcon(icon)
         self.canvas = wx.ScrolledCanvas(self, True)
         self.property = propgrid.PropertyGrid(self, size=(300,500))
