@@ -35,11 +35,78 @@ class Parser():
         model_graph, total_ops = self.LoadGraph(model_file_path)
         init_progress_callback(total_ops)
         ret, _ = updage_progress_callback(0)
-        if ret: return self.ParseGraph(model_graph, Path(model_file_path).stem, updage_progress_callback, max_node_per_graph)
+        if ret: return self.FillOutputMap(self.ParseGraph(model_graph, Path(model_file_path).stem, updage_progress_callback, max_node_per_graph))
         else: return None
 
+    '''
+    def FillOutputMap(self, graph):
+
+        def FillOutput(graph, map):
+            for v in graph['vertices']:
+                for o in graph['vertices'][v]['outputs']:
+                    map[o] = {'graph':graph, 'from': v, 'to': {}}
+            for sg in graph['subgraphs']:
+                FillOutput(graph['subgraphs'][sg], map)
+
+        def FillInput(graph, map):
+            for v in graph['vertices']:
+                for ii in graph['vertices'][v]['inputs']:
+                    if ii in map:
+                        map[ii]['to'][v] = graph
+            for sg in graph['subgraphs']:
+                FillInput(graph['subgraphs'][sg], map)
+
+        def WriteGraph(graph, map):
+            for v in graph['vertices']:
+                for ii in graph['vertices'][v]['inputs']:
+                    if ii in map:
+                        graph['map'][ii] = map[ii]
+                for o in graph['vertices'][v]['outputs']:
+                    if o in map:
+                        graph['map'][o] = map[o]
+
+        map = {}
+        FillOutput(graph, map)
+        FillInput(graph, map)
+        WriteGraph(graph, map)
+        return graph
+    '''
+    def FillOutputMap(self, graph):
+
+        def FillOutput(graph, map):
+            for v in graph['vertices']:
+                for o in graph['vertices'][v]['outputs']:
+                    map[o] = {'graph':graph, 'from': v, 'to': {}}
+            for sg in graph['subgraphs']:
+                FillOutput(graph['subgraphs'][sg], map)
+
+        def FillInput(graph, map):
+            for v in graph['vertices']:
+                for ii in graph['vertices'][v]['inputs']:
+                    if ii in map:
+                        map[ii]['to'][v] = graph
+            for sg in graph['subgraphs']:
+                FillInput(graph['subgraphs'][sg], map)
+
+        def WriteGraph(graph, map):
+            graph['map'] = map
+            for sg in graph['subgraphs']:
+                WriteGraph(graph['subgraphs'][sg], map)
+
+        map = {}
+        FillOutput(graph, map)
+        FillInput(graph, map)
+        WriteGraph(graph, map)
+        return graph
+
+    def EmptyGraph(self):
+        return {'name': '', 'type': '', 'vertices': {}, 'shapes': {},\
+               'types': {}, 'edges': {}, 'selected':'', 'subgraphs':{}, 'map':{}}
+
     def ParseGraph(self, model_graph, name, updage_progress_callback, max_node_per_graph):
-        graph = {'name': name, 'type': self.GetType(), 'vertices': {}, 'shapes': {}, 'types': {}, 'edges': {}, 'selected':'', 'subgraphs':{}}
+        graph = self.EmptyGraph()
+        graph['name'] = name
+        graph['type'] = self.GetType()
         ops = self.GetOps(model_graph)
         num_ops = len(ops)
 
@@ -48,8 +115,10 @@ class Parser():
             all_outputs = {}
 
             for i in range(0, num_ops, max_node_per_graph):
-                sub_graph_name = name + '_' + 'vertice_set_' + str(i/max_node_per_graph + 1)
-                sub_graph = {'name': sub_graph_name, 'type': self.GetType(), 'vertices': {}, 'shapes': {}, 'types': {}, 'edges': {}, 'selected':'', 'subgraphs':{}}
+                sub_graph_name = name + '_vertices_' + str(i/max_node_per_graph + 1)
+                sub_graph = self.EmptyGraph()
+                sub_graph['name'] = sub_graph_name
+                sub_graph['type'] = self.GetType()
 
                 for op in ops[i: min(i+max_node_per_graph, num_ops)]:
                     attrs, sg = self.GetAttr(op)
@@ -273,6 +342,7 @@ class OnnxParser(Parser):
         except:
             model = onnx.load(model_file_path)
         self.FillTypeShape(model.graph)
+        # print ('model version:', model.model_version)
         return model.graph, self.CountOps(model.graph)
 
     def CountOps(self, graph):
@@ -409,6 +479,7 @@ class TFParser(Parser):
         else:
             with tf.compat.v1.Session() as sess:
                 graph_def = tf.compat.v1.GraphDef()
+                # print ("graph_def version:", graph_def.version)
                 with tf.io.gfile.GFile(model_file_path, 'rb') as f:
                     graph_def.ParseFromString(f.read())
                     tf.import_graph_def(graph_def, name='')

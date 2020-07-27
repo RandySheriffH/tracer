@@ -14,16 +14,49 @@ class About(wx.Dialog):
         self.Center()
         self.Show()
 
-class MyProperty(wx.propgrid.LongStringProperty):
+class SubgraphProperty(wx.propgrid.LongStringProperty):
 
     def __init__(self, frame, label=propgrid.PG_LABEL, name=propgrid.PG_LABEL, value=''):
-        super(MyProperty, self).__init__(label, name, value)
+        super(SubgraphProperty, self).__init__(label, name, value)
         self.frame = frame
 
     def DisplayEditorDialog(self, prop, label):
         graph = self.frame.GetSubgraph(self.frame.graph, label)
         self.frame.GetParent().ShowFrame(graph)
         return (False, '')
+
+
+class InputProperty(wx.propgrid.LongStringProperty):
+
+    def __init__(self, frame, label=propgrid.PG_LABEL, name=propgrid.PG_LABEL, value=''):
+        super(InputProperty, self).__init__(label, name, value)
+        self.frame = frame
+
+    def DisplayEditorDialog(self, prop, label):
+        if label in self.frame.graph['map']:
+            record = self.frame.graph['map'][label]
+            graph = record['graph']
+            graph['selected'] = record['from']
+            self.frame.GetParent().ShowFrame(graph)
+        else: print ('label not in map')
+        return (False, '')
+
+
+class OutputProperty(wx.propgrid.LongStringProperty):
+
+    def __init__(self, frame, label=propgrid.PG_LABEL, name=propgrid.PG_LABEL, value=''):
+        super(OutputProperty, self).__init__(label, name, value)
+        self.frame = frame
+        self.name = name
+        self.value = value
+
+    def DisplayEditorDialog(self, prop, label):
+        if self.name in self.frame.graph['map']:
+            graph = self.frame.graph['map'][self.name]['to'][self.value]
+            graph['selected'] = self.value
+            self.frame.GetParent().ShowFrame(graph)
+        return (False, '')
+
 
 class ChildFrame(wx.MDIChildFrame):
 
@@ -207,9 +240,10 @@ class ChildFrame(wx.MDIChildFrame):
         self.property.Append(propgrid.StringProperty('Name', 'Name', v))
         self.property.Append(propgrid.StringProperty('Type', 'Type', vertice['type']))
         self.property.Append(propgrid.PropertyCategory("Vertice Inputs", "Vertice Inputs"))
+
         for i, n in enumerate(vertice['inputs']):
             input_name = 'Input ' + str(i+1)
-            prop = propgrid.StringProperty(input_name, input_name, n)
+            prop = InputProperty(self, input_name, input_name, n)
             self.property.Append(prop)
             if n in self.graph['shapes']:
                 subprop = propgrid.StringProperty('Shape', 'Shape', str(self.graph['shapes'][n]))
@@ -217,6 +251,7 @@ class ChildFrame(wx.MDIChildFrame):
             if n in self.graph['types']:
                 subprop = propgrid.StringProperty('Type', 'Type', str(self.graph['types'][n]))
                 self.property.AppendIn(propgrid.PGPropArgCls(prop), subprop)
+
         self.property.Append(propgrid.PropertyCategory("Vertice Outputs", "Vertice Outputs"))
         for i, n in enumerate(vertice['outputs']):
             output_name = 'Output ' + str(i+1)
@@ -228,6 +263,12 @@ class ChildFrame(wx.MDIChildFrame):
             if n in self.graph['types']:
                 subprop = propgrid.StringProperty('Type', 'Type', str(self.graph['types'][n]))
                 self.property.AppendIn(propgrid.PGPropArgCls(prop), subprop)
+            if n in self.graph['map']:
+                for ii, to in enumerate(self.graph['map'][n]['to']):
+                    consumer = 'Consumer' + str(ii)
+                    subprop = OutputProperty(self, consumer, n, to)
+                    self.property.AppendIn(propgrid.PGPropArgCls(prop), subprop)
+
         self.property.Append(propgrid.PropertyCategory("Vertice Attrs", "Vertice Attrs"))
         for i, n in enumerate(vertice['attrs']):
             attr = vertice['attrs'][n]
@@ -236,7 +277,7 @@ class ChildFrame(wx.MDIChildFrame):
                 if len(attr['value']) < 30: self.property.Append(propgrid.StringProperty(n, n, attr['value']))
                 else: self.property.Append(propgrid.LongStringProperty(n, n, attr['value']))
             elif 'subgraph' == t:
-                prop = MyProperty(self, n, attr['value'], attr['value'])
+                prop = SubgraphProperty(self, n, attr['value'], attr['value'])
                 self.property.Append(prop)
             elif t in ['tensor', 'sparse_tensor']:
                 shape_prop = propgrid.StringProperty('Shape', 'Shape', str(attr['value'].shape))
