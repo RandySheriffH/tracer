@@ -453,13 +453,18 @@ class MainFrame(wx.MDIParentFrame):
 
         def update_progress_func(done):
             return progress.Update(done, str(done) + " nodes analyzed ...")
+
+        cancelled = True
         try:
             graph = Parse(model_path, init_progress_func, update_progress_func)
             cancelled = progress.WasCancelled()
-            progress.Destroy()
-            if cancelled is False: self.ShowFrame(graph)
         except graphviz.backend.ExecutableNotFound:
-            wx.MessageDialog(self, 'Please install latest graphviz from www.graphviz.org and add it to PATH').ShowModal()
+            wx.MessageDialog(self, 'Please install latest graphviz from \
+                                    www.graphviz.org and add it to PATH').ShowModal()
+        except Exception as ex:
+            wx.MessageDialog(self, 'Failed to parse model due to exception: ' + str(ex)).ShowModal()
+        progress.Destroy()
+        if cancelled is False: self.ShowFrame(graph)
 
     def AddHistory(self, record):
         self.history.append(record)
