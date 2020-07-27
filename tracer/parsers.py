@@ -393,12 +393,26 @@ class TFParser(Parser):
     def LoadGraph(self, model_file_path):
         import tensorflow as tf
         tf.compat.v1.reset_default_graph()
-        with tf.compat.v1.Session() as sess:
-            graph_def = tf.compat.v1.GraphDef()
-            with tf.io.gfile.GFile(model_file_path, 'rb') as f:
-                graph_def.ParseFromString(f.read())
+        path_stem = os.path.dirname(model_file_path)
+        if path_stem.endswith('saved_model'):
+            imported = tf.saved_model.load(path_stem)
+            convert_variables_to_constants = tf.compat.v1.graph_util.convert_variables_to_constants
+            from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
+            all_sigs = imported.signatures.keys()
+            signatures = [s for s in all_sigs if not s.startswith("_")]
+            func = imported.signatures[signatures[0]]
+            frozen_func = convert_variables_to_constants_v2(func, lower_control_flow=False)
+            graph_def = frozen_func.graph.as_graph_def(add_shapes=True)
+            with tf.compat.v1.Session() as sess:
                 tf.import_graph_def(graph_def, name='')
                 return sess.graph, self.CountOps(sess.graph)
+        else:
+            with tf.compat.v1.Session() as sess:
+                graph_def = tf.compat.v1.GraphDef()
+                with tf.io.gfile.GFile(model_file_path, 'rb') as f:
+                    graph_def.ParseFromString(f.read())
+                    tf.import_graph_def(graph_def, name='')
+                    return sess.graph, self.CountOps(sess.graph)
 
     def GetSubGraph(self, subgraph_name):
         return self.functions[subgraph_name]
