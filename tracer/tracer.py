@@ -195,6 +195,13 @@ class ChildFrame(wx.MDIChildFrame):
         x, y = pos[0], pos[1]
         return x > rect[0] and x < rect[0] + rect[2] and y > rect[1] and y < rect[1] + rect[3]
 
+    def Corners(self, rect):
+        left = rect[0]
+        top = rect[1]
+        right = rect[0] + rect[2]
+        btm = rect[1] + rect[3]
+        return (left, top), (left, btm), (right, top), (right, btm)
+
     def OnLeftDown(self, event):
         pos = event.GetLogicalPosition(self.dc)
         need_refresh = False
@@ -308,16 +315,22 @@ class ChildFrame(wx.MDIChildFrame):
         else:
             self.ThumbPanel.Show(False)
 
+        view = self.GetCanvasView()
         for edge in self.graph['edges']:
             spline = self.graph['edges'][edge]['spline']
-            dc.DrawSpline(spline)
-            dc.DrawPolygon(self.graph['edges'][edge]['arrow'])
+            if self.In(view, spline[0]) or self.In(view, spline[-1]):
+                dc.DrawSpline(spline)
+                dc.DrawPolygon(self.graph['edges'][edge]['arrow'])
 
         for vertice in self.graph['vertices']:
             vertice_rect = self.graph['vertices'][vertice]['rect']
-            dc.DrawRoundedRectangle(self.graph['vertices'][vertice]['rect'], 3)
-            dc.DrawText(self.graph['vertices'][vertice]['type'],
-                        INT(self.graph['vertices'][vertice]['label']))
+            corners = self.Corners(vertice_rect)
+            for corner in corners:
+                if self.In(view, corner):
+                    dc.DrawRoundedRectangle(self.graph['vertices'][vertice]['rect'], 3)
+                    dc.DrawText(self.graph['vertices'][vertice]['type'],
+                                INT(self.graph['vertices'][vertice]['label']))
+                    break
 
         vertice = self.graph['vertices'][self.graph['selected']]
         dc.SetPen(wx.Pen("red", 2))
