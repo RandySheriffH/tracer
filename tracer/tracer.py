@@ -1,12 +1,21 @@
-import os, wx, sys, math
+# Licensed under the MIT license.
+'''tracer graphic user interface by wx'''
+#pylint: disable=no-member,import-outside-toplevel,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,protected-access,no-name-in-module,too-few-public-methods
+
+import os
+import wx
+import sys
+import math
 from wx import Point, Size, propgrid
 from .parsers import parse
-from .utils import *
+from .utils import to_int, pwd, create_temp, remove_temp
 import graphviz
 
 class About(wx.Dialog):
+    '''about info for tracer'''
+
     def __init__(self, parent):
-        super(About, self).__init__(parent, size = (360, 120))
+        super(About, self).__init__(parent, size=(360, 120))
         self.info = wx.StaticText(self, pos=Point(80, 20))
         self.info.SetLabel("Tracer by Ran Shuai, MIT license")
         self.mail = wx.StaticText(self, pos=Point(90, 40))
@@ -15,6 +24,7 @@ class About(wx.Dialog):
         self.Show()
 
 class SubgraphProperty(wx.propgrid.LongStringProperty):
+    '''subgraph property to allow for trace embedded graph'''
 
     def __init__(self, frame, label=propgrid.PG_LABEL, name=propgrid.PG_LABEL, value=''):
         super(SubgraphProperty, self).__init__(label, name, value)
@@ -27,6 +37,7 @@ class SubgraphProperty(wx.propgrid.LongStringProperty):
 
 
 class InputProperty(wx.propgrid.LongStringProperty):
+    '''input property to allow for trace input'''
 
     def __init__(self, frame, label=propgrid.PG_LABEL, name=propgrid.PG_LABEL, value=''):
         super(InputProperty, self).__init__(label, name, value)
@@ -38,11 +49,11 @@ class InputProperty(wx.propgrid.LongStringProperty):
             graph = record['graph']
             graph['selected'] = record['from']
             self.frame.GetParent().ShowFrame(graph)
-        else: print ('label not in map')
         return (False, '')
 
 
 class OutputProperty(wx.propgrid.LongStringProperty):
+    '''output property to allow for trace output'''
 
     def __init__(self, frame, label=propgrid.PG_LABEL, name=propgrid.PG_LABEL, value=''):
         super(OutputProperty, self).__init__(label, name, value)
@@ -59,9 +70,10 @@ class OutputProperty(wx.propgrid.LongStringProperty):
 
 
 class ChildFrame(wx.MDIChildFrame):
+    '''child frame to show a graph'''
 
     def __init__(self, parent, title, graph):
-        super(ChildFrame, self).__init__(parent, title = title, size = graph['size'])
+        super(ChildFrame, self).__init__(parent, title=title, size=graph['size'])
         self.graph = graph
         self.pen_color = wx.Colour('black')
         self.foreground_color = wx.Colour('gray')
@@ -94,13 +106,16 @@ class ChildFrame(wx.MDIChildFrame):
     def InitUI(self):
         icon = wx.Icon()
         if self.graph['type'] == 'onnx':
-            icon.CopyFromBitmap(wx.Bitmap(os.path.join(pwd(), 'icons', 'onnx.png'), wx.BITMAP_TYPE_ANY))
+            icon.CopyFromBitmap(wx.Bitmap(os.path.join(pwd(), 'icons', 'onnx.png'),
+                                          wx.BITMAP_TYPE_ANY))
         elif self.graph['type'] == 'tensorflow':
-            icon.CopyFromBitmap(wx.Bitmap(os.path.join(pwd(), 'icons', 'tf.png'), wx.BITMAP_TYPE_ANY))
-        else: icon.CopyFromBitmap(wx.Bitmap(os.path.join(pwd(), 'icons', 'model.png'), wx.BITMAP_TYPE_ANY))
+            icon.CopyFromBitmap(wx.Bitmap(os.path.join(pwd(), 'icons', 'tf.png'),
+                                          wx.BITMAP_TYPE_ANY))
+        else: icon.CopyFromBitmap(wx.Bitmap(os.path.join(pwd(), 'icons', 'model.png'),
+                                            wx.BITMAP_TYPE_ANY))
         self.SetIcon(icon)
         self.canvas = wx.ScrolledCanvas(self, True)
-        self.property = propgrid.PropertyGrid(self, size=(300,500))
+        self.property = propgrid.PropertyGrid(self, size=(300, 500))
         self.box = wx.BoxSizer(wx.HORIZONTAL)
         self.box.Add(self.canvas, wx.ID_ANY, flag=wx.EXPAND|wx.ALL|wx.LEFT, border=1)
         self.box.Add(self.property, 0, flag=wx.EXPAND|wx.RIGHT, border=1)
@@ -180,10 +195,12 @@ class ChildFrame(wx.MDIChildFrame):
         dc.DrawCircle(Point((int(rect[0]/self.thumb_ratio), int(rect[1]/self.thumb_ratio))), 2)
 
     def GetSubgraph(self, graph, name):
-        if name in graph['subgraphs']: return graph['subgraphs'][name]
+        if name in graph['subgraphs']:
+            return graph['subgraphs'][name]
         for sg in graph['subgraphs']:
             ret = self.GetSubgraph(graph['subgraphs'][sg], name)
-            if ret is not None: return ret
+            if ret is not None:
+                return ret
         raise RuntimeError('Subgraph ', name, 'does not exist.')
 
     def OnClick(self, e):
@@ -207,9 +224,12 @@ class ChildFrame(wx.MDIChildFrame):
         need_refresh = False
 
         for vertice in self.graph['vertices']:
-            if self.In(self.graph['vertices'][vertice]['rect'], pos) and vertice != self.graph['selected']:
+            if self.In(self.graph['vertices'][vertice]['rect'], pos) and\
+               vertice != self.graph['selected']:
                 self.graph['selected'] = vertice
-                self.GetParent().AddHistory([self.GetId(), self.graph['name'], self.graph['selected']])
+                self.GetParent().AddHistory([self.GetId(),
+                                             self.graph['name'],
+                                             self.graph['selected']])
                 need_refresh = True
                 break
 
@@ -281,8 +301,10 @@ class ChildFrame(wx.MDIChildFrame):
             attr = vertice['attrs'][n]
             t = attr['type']
             if 'string' == t:
-                if len(attr['value']) < 30: self.property.Append(propgrid.StringProperty(n, n, attr['value']))
-                else: self.property.Append(propgrid.LongStringProperty(n, n, attr['value']))
+                if len(attr['value']) < 30:
+                    self.property.Append(propgrid.StringProperty(n, n, attr['value']))
+                else:
+                    self.property.Append(propgrid.LongStringProperty(n, n, attr['value']))
             elif 'subgraph' == t:
                 prop = SubgraphProperty(self, n, attr['value'], attr['value'])
                 self.property.Append(prop)
@@ -309,7 +331,7 @@ class ChildFrame(wx.MDIChildFrame):
         graph_size = self.graph['size']
 
         if canvas_size[0] < graph_size[0] and canvas_size[1] < graph_size[1]:
-            self.ThumbPanel.SetPosition((0,0))
+            self.ThumbPanel.SetPosition((0, 0))
             self.ThumbPanel.SetSize(self.CalcThumbSize())
             self.ThumbPanel.SetBackgroundColour(self.foreground_color)
         else:
@@ -362,15 +384,20 @@ class ChildFrame(wx.MDIChildFrame):
 
 
 class MainFrame(wx.MDIParentFrame):
+    '''main frame'''
 
     def __init__(self, parent, title):
-        super(MainFrame, self).__init__(parent, title=title, size=(500,300), style=wx.DEFAULT_FRAME_STYLE|wx.FRAME_NO_WINDOW_MENU )
+        super(MainFrame, self).__init__(parent,
+                                        title=title,
+                                        size=(500, 300),
+                                        style=wx.DEFAULT_FRAME_STYLE|wx.FRAME_NO_WINDOW_MENU)
         self.InitUI()
         create_temp()
 
     def InitUI(self):
         icon = wx.Icon()
-        icon.CopyFromBitmap(wx.Bitmap(os.path.join(pwd(), 'icons', 'tracer.30.png'), wx.BITMAP_TYPE_ANY))
+        icon.CopyFromBitmap(wx.Bitmap(os.path.join(pwd(), 'icons', 'tracer.30.png'),
+                                      wx.BITMAP_TYPE_ANY))
         self.SetIcon(icon)
         self.SetTitle('tracer')
         self.dc = None
@@ -385,15 +412,25 @@ class MainFrame(wx.MDIParentFrame):
         self.MenuBar.Append(self.About, 'About')
         self.MenuBar.Bind(wx.EVT_MENU, self.OnOrder)
         self.ToolBar = wx.ToolBar(self, -1)
-        self.ToolBar.AddTool(1, 'back', wx.Bitmap(os.path.join(pwd(), 'icons', 'back.png')), 'back')
-        self.ToolBar.AddTool(2, 'forward', wx.Bitmap(os.path.join(pwd(), 'icons', 'forward.png')), 'forward')
-        self.ToolBar.AddTool(3, 'darkdrop', wx.Bitmap(os.path.join(pwd(), 'icons', 'blackdrop.png')), 'dark backdrop')
-        self.ToolBar.AddTool(4, 'lightdrop', wx.Bitmap(os.path.join(pwd(), 'icons', 'whitedrop.png')), 'light backdrop')
+        self.ToolBar.AddTool(1, 'back',
+                             wx.Bitmap(os.path.join(pwd(), 'icons', 'back.png')),
+                             'back')
+        self.ToolBar.AddTool(2, 'forward',
+                             wx.Bitmap(os.path.join(pwd(), 'icons', 'forward.png')),
+                             'forward')
+        self.ToolBar.AddTool(3, 'darkdrop',
+                             wx.Bitmap(os.path.join(pwd(), 'icons', 'blackdrop.png')),
+                             'dark backdrop')
+        self.ToolBar.AddTool(4, 'lightdrop',
+                             wx.Bitmap(os.path.join(pwd(), 'icons', 'whitedrop.png')),
+                             'light backdrop')
         self.SetToolBar(self.ToolBar)
         self.ToolBar.Realize()
         self.ToolBar.Bind(wx.EVT_TOOL, self.OnMove)
         self.Maximize(True)
-        self.Search = wx.SearchCtrl(self.ToolBar, pos=(self.GetSize()[0]-260,7), size=(250,23))
+        self.Search = wx.SearchCtrl(self.ToolBar,
+                                    pos=(self.GetSize()[0]-260, 7),
+                                    size=(250, 23))
         self.Search.ShowCancelButton(True)
         self.Search.Bind(wx.EVT_SET_FOCUS, self.PrepareSearch)
         self.Search.Bind(wx.EVT_SEARCHCTRL_SEARCH_BTN, self.OnSearch)
@@ -417,7 +454,8 @@ class MainFrame(wx.MDIParentFrame):
         keyword = self.search_txtctrl.GetValue()
         if keyword in frame.dict:
             frame.Select(self.search_txtctrl.GetValue())
-        else: wx.MessageDialog(self, keyword + ' not in current graph or its subgraphs.').ShowModal()
+        else: wx.MessageDialog(self,
+                               keyword + ' not in current graph or its subgraphs.').ShowModal()
 
     def OnOrder(self, event):
         mid = event.GetId()
@@ -461,8 +499,6 @@ class MainFrame(wx.MDIParentFrame):
         except graphviz.backend.ExecutableNotFound:
             wx.MessageDialog(self, 'Please install latest graphviz from \
                                     www.graphviz.org and add it to PATH').ShowModal()
-        # except Exception as ex:
-        #    wx.MessageDialog(self, 'Failed to parse model due to exception: ' + str(ex)).ShowModal()
         progress.Destroy()
         if cancelled is False: self.ShowFrame(graph)
 
@@ -510,5 +546,5 @@ class MainFrame(wx.MDIParentFrame):
 
 def show():
     ex = wx.App()
-    MainFrame(None,'Tracer')
+    MainFrame(None, 'Tracer')
     ex.MainLoop()
