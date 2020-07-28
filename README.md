@@ -18,6 +18,7 @@ Tracer is a desktop app to render deep learning models:
 
 ## Trace back and forth
 Tracer keeps history of highlighted nodes, user could rely on buttons from toolbar to go back and forth:
+[<img src="https://github.com/RandySheriffH/tracer/blob/master/snaps/BackForth.PNG">]
 
 ## Display embedded graphs
 In property panel, select corresponding attribute, click on "..." button, embedded graph will be display in a new frame:
