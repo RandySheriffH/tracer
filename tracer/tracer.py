@@ -94,10 +94,10 @@ class ChildFrame(wx.MDIChildFrame):
     def InitUI(self):
         icon = wx.Icon()
         if self.graph['type'] == 'onnx':
-            icon.CopyFromBitmap(wx.Bitmap(os.path.join(PWD(), 'icons', 'onnx.png')), wx.BITMAP_TYPE_ANY)
+            icon.CopyFromBitmap(wx.Bitmap(os.path.join(PWD(), 'icons', 'onnx.png'), wx.BITMAP_TYPE_ANY))
         elif self.graph['type'] == 'tensorflow':
-            icon.CopyFromBitmap(wx.Bitmap(os.path.join(PWD(), 'icons', 'tf.png')), wx.BITMAP_TYPE_ANY)
-        else: icon.CopyFromBitmap(wx.Bitmap(os.path.join(PWD(), 'icons', 'model.png')), wx.BITMAP_TYPE_ANY)
+            icon.CopyFromBitmap(wx.Bitmap(os.path.join(PWD(), 'icons', 'tf.png'), wx.BITMAP_TYPE_ANY))
+        else: icon.CopyFromBitmap(wx.Bitmap(os.path.join(PWD(), 'icons', 'model.png'), wx.BITMAP_TYPE_ANY))
         self.SetIcon(icon)
         self.canvas = wx.ScrolledCanvas(self, True)
         self.property = propgrid.PropertyGrid(self, size=(300,500))
