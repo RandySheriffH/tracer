@@ -1,4 +1,4 @@
-# <img src="https://github.com/RandySheriffH/tracer/blob/master/snaps/Tracer.jpg" width=30 height=25>Tracer
+# <img src="https://github.com/RandySheriffH/tracer/blob/master/snaps/Tracer.jpg" width=30 height=25> Tracer
 Tracer is a desktop app to render deep learning models:
 
 - Keep history of browsing for easy trace back
