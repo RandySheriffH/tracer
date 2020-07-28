@@ -1,6 +1,6 @@
 import os, wx, sys, math
 from wx import Point, Size, propgrid
-from .parsers import Parse
+from .parsers import parse
 from .utils import *
 import graphviz
 
@@ -456,13 +456,13 @@ class MainFrame(wx.MDIParentFrame):
 
         cancelled = True
         try:
-            graph = Parse(model_path, init_progress_func, update_progress_func)
+            graph = parse(model_path, init_progress_func, update_progress_func)
             cancelled = progress.WasCancelled()
         except graphviz.backend.ExecutableNotFound:
             wx.MessageDialog(self, 'Please install latest graphviz from \
                                     www.graphviz.org and add it to PATH').ShowModal()
-        except Exception as ex:
-            wx.MessageDialog(self, 'Failed to parse model due to exception: ' + str(ex)).ShowModal()
+        # except Exception as ex:
+        #    wx.MessageDialog(self, 'Failed to parse model due to exception: ' + str(ex)).ShowModal()
         progress.Destroy()
         if cancelled is False: self.ShowFrame(graph)
 
