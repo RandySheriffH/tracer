@@ -1,5 +1,5 @@
 # Licensed under the MIT license.
-''' Parers to read models '''
+'''Parers to read models'''
 #pylint: disable=no-member,import-outside-toplevel,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,protected-access
 
 import os
@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 from graphviz import Digraph
 from .utils import get_temp, to_int
+
 
 class Parser:
     ''' base class of all interfaces'''

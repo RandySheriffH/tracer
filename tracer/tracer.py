@@ -24,6 +24,7 @@ class About(wx.Dialog):
         self.Center()
         self.Show()
 
+
 class SubgraphProperty(wx.propgrid.LongStringProperty):
     '''subgraph property to allow for trace embedded graph'''
 
@@ -587,6 +588,7 @@ class MainFrame(wx.MDIParentFrame):
             frame.foreground_color = wx.Colour('gray')
             frame.background_color = wx.Colour('white')
             frame.Refresh()
+
 
 def show():
     '''run tracer'''
