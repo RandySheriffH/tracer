@@ -28,4 +28,4 @@ In property panel, select the input and click on "..." button to go to upstream 
 Just type keyword in search input box on right-top corner, select matching item from drop-down and click on search button:
 
 ## Limitations
-For now tracer only support view of tensorflow and onnx models. Contributions are highly welcomed - just add a new parser in parsers.py following the comments.
+For now tracer only support viewing of tensorflow and onnx models. Contributions are highly welcomed - just add a new parser in parsers.py following the comments.
