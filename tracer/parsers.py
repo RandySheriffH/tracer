@@ -385,6 +385,9 @@ class TFParser(Parser):
 
     def __init__(self):
         Parser.__init__(self)
+        import tensorflow as tf
+        if not tf.__version__.startswith("2."):
+            raise RuntimeError("Tracer expecting tensorflow>=2.0")
         self.functions = {}
 
     def get_ops(self, model_graph):
