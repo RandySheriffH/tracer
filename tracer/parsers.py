@@ -8,7 +8,7 @@ import time
 
 from pathlib import Path
 from graphviz import Digraph
-from .utils import GetTemp, INT
+from .utils import get_temp, to_int
 
 class Parser:
     ''' base class of all interfaces'''
@@ -232,7 +232,7 @@ class Parser:
                     dot.edge(output_from[iter_i], vertice_name, str(len(edge_labels)))
                     edge_labels.append(output_from[iter_i] + '~' + vertice_name)
 
-        output_path = GetTemp() + temp_name
+        output_path = get_temp() + temp_name
         dot.render(output_path)
 
         with open(output_path + '.json', 'r') as render_f:
@@ -245,7 +245,7 @@ class Parser:
                 lefttop = points[2]
                 rightbtm = points[0]
                 rect = lefttop + [rightbtm[0]-lefttop[0], rightbtm[1]-lefttop[1]]
-                graph['vertices'][vertice['name']]['rect'] = INT(rect)
+                graph['vertices'][vertice['name']]['rect'] = to_int(rect)
                 label = vertice['_ldraw_'][-1]['pt']
                 label[0] -= vertice['_ldraw_'][-1]['width']/2
                 graph['vertices'][vertice['name']]['label'] = label
@@ -255,8 +255,8 @@ class Parser:
             for edge in edges:
                 label = edge_labels[int(edge['label'])]
                 graph['edges'][label] =\
-                    {'spline': [INT(point) for point in edge['_draw_'][-1]['points']],\
-                     'arrow': [INT(point) for point in edge['_hdraw_'][-1]['points']]}
+                    {'spline': [to_int(point) for point in edge['_draw_'][-1]['points']],\
+                     'arrow': [to_int(point) for point in edge['_hdraw_'][-1]['points']]}
                 [input_v, output_v] = label.split('~')
                 graph['vertices'][input_v]['edges'].append(label)
                 graph['vertices'][output_v]['edges'].append(label)

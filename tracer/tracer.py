@@ -94,10 +94,10 @@ class ChildFrame(wx.MDIChildFrame):
     def InitUI(self):
         icon = wx.Icon()
         if self.graph['type'] == 'onnx':
-            icon.CopyFromBitmap(wx.Bitmap(os.path.join(PWD(), 'icons', 'onnx.png'), wx.BITMAP_TYPE_ANY))
+            icon.CopyFromBitmap(wx.Bitmap(os.path.join(pwd(), 'icons', 'onnx.png'), wx.BITMAP_TYPE_ANY))
         elif self.graph['type'] == 'tensorflow':
-            icon.CopyFromBitmap(wx.Bitmap(os.path.join(PWD(), 'icons', 'tf.png'), wx.BITMAP_TYPE_ANY))
-        else: icon.CopyFromBitmap(wx.Bitmap(os.path.join(PWD(), 'icons', 'model.png'), wx.BITMAP_TYPE_ANY))
+            icon.CopyFromBitmap(wx.Bitmap(os.path.join(pwd(), 'icons', 'tf.png'), wx.BITMAP_TYPE_ANY))
+        else: icon.CopyFromBitmap(wx.Bitmap(os.path.join(pwd(), 'icons', 'model.png'), wx.BITMAP_TYPE_ANY))
         self.SetIcon(icon)
         self.canvas = wx.ScrolledCanvas(self, True)
         self.property = propgrid.PropertyGrid(self, size=(300,500))
@@ -329,13 +329,13 @@ class ChildFrame(wx.MDIChildFrame):
                 if self.In(view, corner):
                     dc.DrawRoundedRectangle(self.graph['vertices'][vertice]['rect'], 3)
                     dc.DrawText(self.graph['vertices'][vertice]['type'],
-                                INT(self.graph['vertices'][vertice]['label']))
+                                to_int(self.graph['vertices'][vertice]['label']))
                     break
 
         vertice = self.graph['vertices'][self.graph['selected']]
         dc.SetPen(wx.Pen("red", 2))
         dc.DrawRoundedRectangle(vertice['rect'], 3)
-        dc.DrawText(vertice['type'], INT(vertice['label']))
+        dc.DrawText(vertice['type'], to_int(vertice['label']))
 
         for edge in vertice['edges']:
             if edge in self.graph['edges']:
@@ -366,11 +366,11 @@ class MainFrame(wx.MDIParentFrame):
     def __init__(self, parent, title):
         super(MainFrame, self).__init__(parent, title=title, size=(500,300), style=wx.DEFAULT_FRAME_STYLE|wx.FRAME_NO_WINDOW_MENU )
         self.InitUI()
-        CreateTemp()
+        create_temp()
 
     def InitUI(self):
         icon = wx.Icon()
-        icon.CopyFromBitmap(wx.Bitmap(os.path.join(PWD(), 'icons', 'tracer.30.png'), wx.BITMAP_TYPE_ANY))
+        icon.CopyFromBitmap(wx.Bitmap(os.path.join(pwd(), 'icons', 'tracer.30.png'), wx.BITMAP_TYPE_ANY))
         self.SetIcon(icon)
         self.SetTitle('tracer')
         self.dc = None
@@ -385,10 +385,10 @@ class MainFrame(wx.MDIParentFrame):
         self.MenuBar.Append(self.About, 'About')
         self.MenuBar.Bind(wx.EVT_MENU, self.OnOrder)
         self.ToolBar = wx.ToolBar(self, -1)
-        self.ToolBar.AddTool(1, 'back', wx.Bitmap(os.path.join(PWD(), 'icons', 'back.png')), 'back')
-        self.ToolBar.AddTool(2, 'forward', wx.Bitmap(os.path.join(PWD(), 'icons', 'forward.png')), 'forward')
-        self.ToolBar.AddTool(3, 'darkdrop', wx.Bitmap(os.path.join(PWD(), 'icons', 'blackdrop.png')), 'dark backdrop')
-        self.ToolBar.AddTool(4, 'lightdrop', wx.Bitmap(os.path.join(PWD(), 'icons', 'whitedrop.png')), 'light backdrop')
+        self.ToolBar.AddTool(1, 'back', wx.Bitmap(os.path.join(pwd(), 'icons', 'back.png')), 'back')
+        self.ToolBar.AddTool(2, 'forward', wx.Bitmap(os.path.join(pwd(), 'icons', 'forward.png')), 'forward')
+        self.ToolBar.AddTool(3, 'darkdrop', wx.Bitmap(os.path.join(pwd(), 'icons', 'blackdrop.png')), 'dark backdrop')
+        self.ToolBar.AddTool(4, 'lightdrop', wx.Bitmap(os.path.join(pwd(), 'icons', 'whitedrop.png')), 'light backdrop')
         self.SetToolBar(self.ToolBar)
         self.ToolBar.Realize()
         self.ToolBar.Bind(wx.EVT_TOOL, self.OnMove)
@@ -403,7 +403,7 @@ class MainFrame(wx.MDIParentFrame):
         self.Show(True)
 
     def OnClose(self, e):
-        RemoveTemp()
+        remove_temp()
         e.Skip()
 
     def PrepareSearch(self, event):
