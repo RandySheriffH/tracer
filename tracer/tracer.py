@@ -1,15 +1,16 @@
 # Licensed under the MIT license.
 '''tracer graphic user interface by wx'''
-#pylint: disable=no-member,import-outside-toplevel,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,protected-access,no-name-in-module,too-few-public-methods
+#pylint: disable=no-member,import-outside-toplevel,too-many-instance-attributes,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,protected-access,no-name-in-module,too-few-public-methods,invalid-name,chained-comparison
 
 import os
-import wx
 import sys
 import math
-from wx import Point, Size, propgrid
+import wx
+from wx import Point, propgrid
+import graphviz
 from .parsers import parse
 from .utils import to_int, pwd, create_temp, remove_temp
-import graphviz
+
 
 class About(wx.Dialog):
     '''about info for tracer'''
@@ -30,25 +31,30 @@ class SubgraphProperty(wx.propgrid.LongStringProperty):
         super(SubgraphProperty, self).__init__(label, name, value)
         self.frame = frame
 
-    def DisplayEditorDialog(self, prop, label):
-        graph = self.frame.GetSubgraph(self.frame.graph, label)
-        self.frame.GetParent().ShowFrame(graph)
+    def DisplayEditorDialog(self, _, label):
+        '''respond to button click event'''
+        graph = self.frame.get_subgraph(self.frame.graph, label)
+        self.frame.GetParent().show_frame(graph)
         return (False, '')
 
 
 class InputProperty(wx.propgrid.LongStringProperty):
     '''input property to allow for trace input'''
 
-    def __init__(self, frame, label=propgrid.PG_LABEL, name=propgrid.PG_LABEL, value=''):
+    def __init__(self, frame,
+                 label=propgrid.PG_LABEL,
+                 name=propgrid.PG_LABEL,
+                 value=''):
         super(InputProperty, self).__init__(label, name, value)
         self.frame = frame
 
-    def DisplayEditorDialog(self, prop, label):
+    def DisplayEditorDialog(self, _, label):
+        '''respond to button click event'''
         if label in self.frame.graph['map']:
             record = self.frame.graph['map'][label]
             graph = record['graph']
             graph['selected'] = record['from']
-            self.frame.GetParent().ShowFrame(graph)
+            self.frame.GetParent().show_frame(graph)
         return (False, '')
 
 
@@ -61,11 +67,12 @@ class OutputProperty(wx.propgrid.LongStringProperty):
         self.name = name
         self.value = value
 
-    def DisplayEditorDialog(self, prop, label):
+    def DisplayEditorDialog(self, _, __):
+        '''respond to button click event'''
         if self.name in self.frame.graph['map']:
             graph = self.frame.graph['map'][self.name]['to'][self.value]
             graph['selected'] = self.value
-            self.frame.GetParent().ShowFrame(graph)
+            self.frame.GetParent().show_frame(graph)
         return (False, '')
 
 
@@ -78,32 +85,8 @@ class ChildFrame(wx.MDIChildFrame):
         self.pen_color = wx.Colour('black')
         self.foreground_color = wx.Colour('gray')
         self.background_color = wx.Colour('white')
-        self.dict = {}
-        self.GetDict(self.graph, self.dict)
-        self.InitUI()
-        self.GetParent().AddHistory([self.GetId(), self.graph['name'], self.graph['selected']])
-
-    def GetDict(self, graph, dict):
-
-        def GetPrefix(path):
-            ps = path.split('/')
-            paths = []
-            for i in range(len(ps)):
-                paths.append('/'.join(ps[i:]))
-            return paths
-
-        for v in graph['vertices']:
-            vertice = graph['vertices'][v]
-            for path in GetPrefix(v):
-                if path not in dict: dict[path] = [v, graph]
-            for o in vertice['outputs']:
-                for path in GetPrefix(o):
-                    if path not in dict: dict[path] = [v, graph]
-
-        for sg in graph['subgraphs']:
-            self.GetDict(graph['subgraphs'][sg], dict)
-
-    def InitUI(self):
+        self.dictionary = {}
+        self.get_dict(self.graph, self.dictionary)
         icon = wx.Icon()
         if self.graph['type'] == 'onnx':
             icon.CopyFromBitmap(wx.Bitmap(os.path.join(pwd(), 'icons', 'onnx.png'),
@@ -121,11 +104,11 @@ class ChildFrame(wx.MDIChildFrame):
         self.box.Add(self.property, 0, flag=wx.EXPAND|wx.RIGHT, border=1)
         self.SetSizer(self.box)
         self.dc = None
-        self.canvas.Bind(wx.EVT_PAINT, self.OnPaint)
-        self.canvas.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDown)
-        self.ThumbPanel = wx.Panel(self.canvas, style=wx.SIMPLE_BORDER)
-        self.ThumbPanel.Bind(wx.EVT_PAINT, self.OnPaintThumb)
-        self.ThumbPanel.Bind(wx.EVT_LEFT_DOWN, self.OnKeyDown)
+        self.canvas.Bind(wx.EVT_PAINT, self.on_paint)
+        self.canvas.Bind(wx.EVT_LEFT_DOWN, self.on_left_down)
+        self.thumbnail = wx.Panel(self.canvas, style=wx.SIMPLE_BORDER)
+        self.thumbnail.Bind(wx.EVT_PAINT, self.on_paint_thumb)
+        self.thumbnail.Bind(wx.EVT_LEFT_DOWN, self.on_key_down)
         self.thumb_dc = None
         self.thumb_ratio = 20
         self.thumb_max_len = 300
@@ -137,8 +120,33 @@ class ChildFrame(wx.MDIChildFrame):
         x_steps = math.ceil(float(self.graph['size'][0])/self.x_units)
         y_steps = math.ceil(float(self.graph['size'][1])/self.y_units)
         self.canvas.SetScrollbars(self.x_units, self.y_units, x_steps, y_steps, 0, 0, True)
+        self.GetParent().add_history([self.GetId(), self.graph['name'], self.graph['selected']])
 
-    def CalcThumbSize(self):
+    def get_dict(self, graph, dictionary):
+        '''get keywors of graph for search'''
+
+        def get_prefix(path):
+            ps = path.split('/')
+            paths = []
+            for i in range(len(ps)):
+                paths.append('/'.join(ps[i:]))
+            return paths
+
+        for v in graph['vertices']:
+            vertice = graph['vertices'][v]
+            for path in get_prefix(v):
+                if path not in dictionary:
+                    dictionary[path] = [v, graph]
+            for o in vertice['outputs']:
+                for path in get_prefix(o):
+                    if path not in dictionary:
+                        dictionary[path] = [v, graph]
+
+        for sg in graph['subgraphs']:
+            self.get_dict(graph['subgraphs'][sg], dictionary)
+
+    def cacl_thumb_size(self):
+        '''calculate size of thumbnail'''
         canvas_size = self.graph['size']
         target_size = (math.ceil(float(canvas_size[0])/self.thumb_ratio),
                        math.ceil(float(canvas_size[1])/self.thumb_ratio))
@@ -159,7 +167,8 @@ class ChildFrame(wx.MDIChildFrame):
         self.thumb_ratio = math.ceil(float(canvas_size[0])/width)
         return (math.ceil(width), math.ceil(height))
 
-    def GetCanvasView(self):
+    def get_canvas_view(self):
+        '''get rect of the view'''
         xy_strt = self.canvas.GetViewStart()
         xy_unit = self.canvas.GetScrollPixelsPerUnit()
         xy_size = self.canvas.GetSize()
@@ -167,15 +176,17 @@ class ChildFrame(wx.MDIChildFrame):
         y_start = xy_strt[1] * xy_unit[1]
         return (x_start, y_start, xy_size[0], xy_size[1])
 
-    def OnKeyDown(self, e):
+    def on_key_down(self, e):
+        '''handle left mouse key down event on thumbnail'''
         pos = e.GetLogicalPosition(self.thumb_dc)
         target_pos = (pos[0] * self.thumb_ratio, pos[1] * self.thumb_ratio)
-        target_rect = self.GetCanvasView()
-        if not self.In(target_rect, target_pos):
+        target_rect = self.get_canvas_view()
+        if not ChildFrame.include(target_rect, target_pos):
             self.canvas.Scroll(target_pos[0]/self.x_units, target_pos[1]/self.y_units)
 
-    def OnPaintThumb(self, e):
-        dc = wx.PaintDC(self.ThumbPanel)
+    def on_paint_thumb(self, _):
+        '''paint thumbnail'''
+        dc = wx.PaintDC(self.thumbnail)
         dc.Clear()
         self.thumb_dc = dc
         points = []
@@ -183,7 +194,7 @@ class ChildFrame(wx.MDIChildFrame):
             rect = self.graph['vertices'][v]['rect']
             points.append((int(rect[0]/self.thumb_ratio), int(rect[1]/self.thumb_ratio)))
         dc.DrawPointList(points, wx.Pen(self.background_color, 20))
-        target_rect = self.GetCanvasView()
+        target_rect = self.get_canvas_view()
         thumb_rect = (math.floor(float(target_rect[0])/self.thumb_ratio),
                       math.floor(float(target_rect[1])/self.thumb_ratio),
                       math.ceil(float(target_rect[2])/self.thumb_ratio),
@@ -194,57 +205,70 @@ class ChildFrame(wx.MDIChildFrame):
         rect = self.graph['vertices'][self.graph['selected']]['rect']
         dc.DrawCircle(Point((int(rect[0]/self.thumb_ratio), int(rect[1]/self.thumb_ratio))), 2)
 
-    def GetSubgraph(self, graph, name):
+    def get_subgraph(self, graph, name):
+        '''get embedded graph'''
         if name in graph['subgraphs']:
             return graph['subgraphs'][name]
         for sg in graph['subgraphs']:
-            ret = self.GetSubgraph(graph['subgraphs'][sg], name)
+            ret = self.get_subgraph(graph['subgraphs'][sg], name)
             if ret is not None:
                 return ret
         raise RuntimeError('Subgraph ', name, 'does not exist.')
 
-    def OnClick(self, e):
+    def on_click(self, e):
+        '''open subgraph'''
         bid = e.GetId()
         name = self.op_info[bid].GetLabel().split('"')[-2]
         ChildFrame(self.GetParent(), name, self.graph['subgraphs'][name])
 
-    def In(self, rect, pos):
+    @staticmethod
+    def include(rect, pos):
+        '''check if pos is in rect'''
         x, y = pos[0], pos[1]
-        return x > rect[0] and x < rect[0] + rect[2] and y > rect[1] and y < rect[1] + rect[3]
+        return x > rect[0] and\
+               x < rect[0] + rect[2] and\
+               y > rect[1] and\
+               y < rect[1] + rect[3]
 
-    def Corners(self, rect):
+    @staticmethod
+    def corners(rect):
+        '''return four corners of a rect'''
         left = rect[0]
         top = rect[1]
         right = rect[0] + rect[2]
         btm = rect[1] + rect[3]
         return (left, top), (left, btm), (right, top), (right, btm)
 
-    def OnLeftDown(self, event):
+    def on_left_down(self, event):
+        '''handle left mouse key down event on main view'''
         pos = event.GetLogicalPosition(self.dc)
         need_refresh = False
 
         for vertice in self.graph['vertices']:
-            if self.In(self.graph['vertices'][vertice]['rect'], pos) and\
+            if ChildFrame.include(self.graph['vertices'][vertice]['rect'], pos) and\
                vertice != self.graph['selected']:
                 self.graph['selected'] = vertice
-                self.GetParent().AddHistory([self.GetId(),
-                                             self.graph['name'],
-                                             self.graph['selected']])
+                self.GetParent().add_history([self.GetId(),
+                                              self.graph['name'],
+                                              self.graph['selected']])
                 need_refresh = True
                 break
 
         if need_refresh:
             self.canvas.Refresh()
 
-    def Intersect(self, rect_0, rect_1):
+    @staticmethod
+    def intersect(rect_0, rect_1):
+        '''check if two rects intersect'''
         lefttop = (rect_1[0], rect_1[1])
         leftbtm = (rect_1[0], rect_1[1] + rect_1[3])
         rihttop = (rect_1[0] + rect_1[2], rect_1[1])
         rihtbtm = (rect_1[0] + rect_1[2], rect_1[1] + rect_1[3])
-        return self.In(rect_0, lefttop) or self.In(rect_0, leftbtm) or\
-               self.In(rect_0, rihttop) or self.In(rect_0, rihtbtm)
+        return ChildFrame.include(rect_0, lefttop) or ChildFrame.include(rect_0, leftbtm) or\
+               ChildFrame.include(rect_0, rihttop) or ChildFrame.include(rect_0, rihtbtm)
 
-    def AdjustCanvas(self):
+    def adjust_canvas(self):
+        '''move current view'''
         xy_strt = self.canvas.GetViewStart()
         xy_unit = self.canvas.GetScrollPixelsPerUnit()
         xy_size = self.canvas.GetSize()
@@ -253,23 +277,26 @@ class ChildFrame(wx.MDIChildFrame):
         target_rect = (x_start, y_start, xy_size[0], xy_size[1])
         vertice = self.graph['vertices'][self.graph['selected']]
 
-        if not self.Intersect(target_rect, vertice['rect']):
+        if not ChildFrame.intersect(target_rect, vertice['rect']):
             self.canvas.Scroll(vertice['rect'][0]/self.x_units, vertice['rect'][1]/self.y_units)
 
-    def SetProperty(self):
+    def set_property(self):
+        '''set property panel'''
         v = self.graph['selected']
         name_property = self.property.GetPropertyByLabel('name')
         if name_property is not None and name_property.GetValue() == v:
             return
         self.property.Clear()
         vertice = self.graph['vertices'][v]
-        self.property.Append(propgrid.PropertyCategory("Vertice Property", "Vertice Property"))
+        self.property.Append(propgrid.PropertyCategory('Vertice Property',
+                                                       'Vertice Property'))
         self.property.Append(propgrid.StringProperty('Name', 'Name', v))
         self.property.Append(propgrid.StringProperty('Type', 'Type', vertice['type']))
-        self.property.Append(propgrid.PropertyCategory("Vertice Inputs", "Vertice Inputs"))
+        self.property.Append(propgrid.PropertyCategory('Vertice inputs',
+                                                       'Vertice inputs'))
 
         for i, n in enumerate(vertice['inputs']):
-            input_name = 'Input ' + str(i+1)
+            input_name = 'input ' + str(i+1)
             prop = InputProperty(self, input_name, input_name, n)
             self.property.Append(prop)
             if n in self.graph['shapes']:
@@ -292,7 +319,7 @@ class ChildFrame(wx.MDIChildFrame):
                 self.property.AppendIn(propgrid.PGPropArgCls(prop), subprop)
             if n in self.graph['map']:
                 for ii, to in enumerate(self.graph['map'][n]['to']):
-                    consumer = 'Consumer' + str(ii)
+                    consumer = 'Consumer ' + str(ii)
                     subprop = OutputProperty(self, consumer, n, to)
                     self.property.AppendIn(propgrid.PGPropArgCls(prop), subprop)
 
@@ -300,12 +327,12 @@ class ChildFrame(wx.MDIChildFrame):
         for i, n in enumerate(vertice['attrs']):
             attr = vertice['attrs'][n]
             t = attr['type']
-            if 'string' == t:
+            if t == 'string':
                 if len(attr['value']) < 30:
                     self.property.Append(propgrid.StringProperty(n, n, attr['value']))
                 else:
                     self.property.Append(propgrid.LongStringProperty(n, n, attr['value']))
-            elif 'subgraph' == t:
+            elif t == 'subgraph':
                 prop = SubgraphProperty(self, n, attr['value'], attr['value'])
                 self.property.Append(prop)
             elif t in ['tensor', 'sparse_tensor']:
@@ -315,7 +342,8 @@ class ChildFrame(wx.MDIChildFrame):
                 self.property.Append(data_prop)
         self.property.FitColumns()
 
-    def OnPaint(self, e):
+    def on_paint(self, _):
+        '''paint main view'''
         canvas_size = self.canvas.GetSize()
         dc = wx.PaintDC(self.canvas)
         dc.SetBackground(wx.Brush(self.background_color))
@@ -331,24 +359,24 @@ class ChildFrame(wx.MDIChildFrame):
         graph_size = self.graph['size']
 
         if canvas_size[0] < graph_size[0] and canvas_size[1] < graph_size[1]:
-            self.ThumbPanel.SetPosition((0, 0))
-            self.ThumbPanel.SetSize(self.CalcThumbSize())
-            self.ThumbPanel.SetBackgroundColour(self.foreground_color)
+            self.thumbnail.SetPosition((0, 0))
+            self.thumbnail.SetSize(self.cacl_thumb_size())
+            self.thumbnail.SetBackgroundColour(self.foreground_color)
         else:
-            self.ThumbPanel.Show(False)
+            self.thumbnail.Show(False)
 
-        view = self.GetCanvasView()
+        view = self.get_canvas_view()
         for edge in self.graph['edges']:
             spline = self.graph['edges'][edge]['spline']
-            if self.In(view, spline[0]) or self.In(view, spline[-1]):
+            if ChildFrame.include(view, spline[0]) or ChildFrame.include(view, spline[-1]):
                 dc.DrawSpline(spline)
                 dc.DrawPolygon(self.graph['edges'][edge]['arrow'])
 
         for vertice in self.graph['vertices']:
             vertice_rect = self.graph['vertices'][vertice]['rect']
-            corners = self.Corners(vertice_rect)
+            corners = ChildFrame.corners(vertice_rect)
             for corner in corners:
-                if self.In(view, corner):
+                if ChildFrame.include(view, corner):
                     dc.DrawRoundedRectangle(self.graph['vertices'][vertice]['rect'], 3)
                     dc.DrawText(self.graph['vertices'][vertice]['type'],
                                 to_int(self.graph['vertices'][vertice]['label']))
@@ -364,12 +392,13 @@ class ChildFrame(wx.MDIChildFrame):
                 dc.DrawSpline(self.graph['edges'][edge]['spline'])
                 dc.DrawPolygon(self.graph['edges'][edge]['arrow'])
 
-        self.SetProperty()
-        self.ThumbPanel.Refresh()
+        self.set_property()
+        self.thumbnail.Refresh()
 
-    def Select(self, key):
-        if key in self.dict:
-            v, sg = self.dict[key]
+    def select(self, key):
+        '''highlight vertice on search'''
+        if key in self.dictionary:
+            v, sg = self.dictionary[key]
             if sg == self.graph['name']:
                 need_refresh = False
                 if self.graph['selected'] != v:
@@ -377,10 +406,10 @@ class ChildFrame(wx.MDIChildFrame):
                     need_refresh = True
                 if need_refresh:
                     self.canvas.Refresh()
-                    self.AdjustCanvas()
+                    self.adjust_canvas()
             else:
                 sg['selected'] = v
-                self.GetParent().ShowFrame(sg)
+                self.GetParent().show_frame(sg)
 
 
 class MainFrame(wx.MDIParentFrame):
@@ -391,10 +420,6 @@ class MainFrame(wx.MDIParentFrame):
                                         title=title,
                                         size=(500, 300),
                                         style=wx.DEFAULT_FRAME_STYLE|wx.FRAME_NO_WINDOW_MENU)
-        self.InitUI()
-        create_temp()
-
-    def InitUI(self):
         icon = wx.Icon()
         icon.CopyFromBitmap(wx.Bitmap(os.path.join(pwd(), 'icons', 'tracer.30.png'),
                                       wx.BITMAP_TYPE_ANY))
@@ -410,7 +435,7 @@ class MainFrame(wx.MDIParentFrame):
         self.About = wx.Menu()
         self.About.Append(wx.ID_ABOUT, "About tracer...")
         self.MenuBar.Append(self.About, 'About')
-        self.MenuBar.Bind(wx.EVT_MENU, self.OnOrder)
+        self.MenuBar.Bind(wx.EVT_MENU, self.on_order)
         self.ToolBar = wx.ToolBar(self, -1)
         self.ToolBar.AddTool(1, 'back',
                              wx.Bitmap(os.path.join(pwd(), 'icons', 'back.png')),
@@ -426,38 +451,47 @@ class MainFrame(wx.MDIParentFrame):
                              'light backdrop')
         self.SetToolBar(self.ToolBar)
         self.ToolBar.Realize()
-        self.ToolBar.Bind(wx.EVT_TOOL, self.OnMove)
+        self.ToolBar.Bind(wx.EVT_TOOL, self.on_move)
         self.Maximize(True)
         self.Search = wx.SearchCtrl(self.ToolBar,
                                     pos=(self.GetSize()[0]-260, 7),
                                     size=(250, 23))
         self.Search.ShowCancelButton(True)
-        self.Search.Bind(wx.EVT_SET_FOCUS, self.PrepareSearch)
-        self.Search.Bind(wx.EVT_SEARCHCTRL_SEARCH_BTN, self.OnSearch)
-        self.Bind(wx.EVT_CLOSE, self.OnClose)
+        self.Search.Bind(wx.EVT_SET_FOCUS, self.prepare_search)
+        self.Search.Bind(wx.EVT_SEARCHCTRL_SEARCH_BTN, self.on_search)
+        self.Bind(wx.EVT_CLOSE, MainFrame.on_close)
         self.search_txtctrl = self.Search.FindWindowByName('text')
         self.history = []
+        self.history_at = -1
         self.Show(True)
+        create_temp()
 
-    def OnClose(self, e):
+    @staticmethod
+    def on_close(e):
+        '''clear up on close'''
         remove_temp()
         e.Skip()
 
-    def PrepareSearch(self, event):
+    def prepare_search(self, _):
+        '''load all keywords for search'''
         frame = self.GetActiveChild()
-        if frame is None: return
-        self.Search.AutoComplete(list(frame.dict.keys()))
+        if frame is None:
+            return
+        self.Search.AutoComplete(list(frame.dictionary.keys()))
 
-    def OnSearch(self, event):
+    def on_search(self, _):
+        '''respond to search event'''
         frame = self.GetActiveChild()
-        if frame is None: return
+        if frame is None:
+            return
         keyword = self.search_txtctrl.GetValue()
-        if keyword in frame.dict:
-            frame.Select(self.search_txtctrl.GetValue())
+        if keyword in frame.dictionary:
+            frame.select(self.search_txtctrl.GetValue())
         else: wx.MessageDialog(self,
                                keyword + ' not in current graph or its subgraphs.').ShowModal()
 
-    def OnOrder(self, event):
+    def on_order(self, event):
+        '''handle menu event'''
         mid = event.GetId()
 
         if mid == wx.ID_EXIT:
@@ -466,23 +500,26 @@ class MainFrame(wx.MDIParentFrame):
         elif mid == wx.ID_OPEN:
             dialog = wx.FileDialog(self)
             if dialog.ShowModal() == wx.ID_OK:
-                self.Open(dialog.GetPath())
+                self.open(dialog.GetPath())
 
         elif mid == wx.ID_ABOUT:
             About(self)
 
-    def ShowFrame(self, graph):
+    def show_frame(self, graph):
+        '''show child frame'''
         for record in self.history:
             if record[1] == graph['name']:
                 frame = self.FindWindowById(record[0])
-                if frame is None: continue
+                if frame is None:
+                    continue
                 frame.Maximize()
                 frame.Refresh()
-                frame.AdjustCanvas()
+                frame.adjust_canvas()
                 return
-        ChildFrame(self, graph['name'], graph).AdjustCanvas()
+        ChildFrame(self, graph['name'], graph).adjust_canvas()
 
-    def Open(self, model_path):
+    def open(self, model_path):
+        '''open a child graph to show model'''
         progress = wx.ProgressDialog("Progress", "Reading model ...", parent=self,\
                                      style=wx.PD_SMOOTH|wx.PD_AUTO_HIDE|wx.PD_CAN_ABORT)
 
@@ -500,23 +537,28 @@ class MainFrame(wx.MDIParentFrame):
             wx.MessageDialog(self, 'Please install latest graphviz from \
                                     www.graphviz.org and add it to PATH').ShowModal()
         progress.Destroy()
-        if cancelled is False: self.ShowFrame(graph)
+        if cancelled is False:
+            self.show_frame(graph)
 
-    def AddHistory(self, record):
+    def add_history(self, record):
+        '''keep track of highlighted vertices'''
         self.history.append(record)
         self.history_at = len(self.history) -1
 
-    def OnMove(self, event):
+    def on_move(self, event):
+        '''handle toolbar event'''
         tid = event.GetId()
 
         if tid in [1, 2]:
             while True:
                 if tid == 1:
-                    if self.history_at == 0: break
-                    else: self.history_at -= 1
+                    if self.history_at == 0:
+                        break
+                    self.history_at -= 1
                 elif tid == 2:
-                    if self.history_at == len(self.history) - 1: break
-                    else: self.history_at += 1
+                    if self.history_at == len(self.history) - 1:
+                        break
+                    self.history_at += 1
                 record = self.history[self.history_at]
                 frame = self.FindWindowById(record[0])
                 if frame is None:
@@ -525,12 +567,13 @@ class MainFrame(wx.MDIParentFrame):
                     frame.graph['selected'] = record[2]
                     frame.Maximize()
                     frame.canvas.Refresh()
-                    frame.AdjustCanvas()
+                    frame.adjust_canvas()
                     break
 
         elif tid == 3:
             frame = self.GetActiveChild()
-            if frame is None: return
+            if frame is None:
+                return
             frame.pen_color = wx.Colour('gray')
             frame.foreground_color = wx.Colour('white')
             frame.background_color = wx.Colour(86, 86, 87)
@@ -538,13 +581,15 @@ class MainFrame(wx.MDIParentFrame):
 
         elif tid == 4:
             frame = self.GetActiveChild()
-            if frame is None: return
+            if frame is None:
+                return
             frame.pen_color = wx.Colour('black')
             frame.foreground_color = wx.Colour('gray')
             frame.background_color = wx.Colour('white')
             frame.Refresh()
 
 def show():
+    '''run tracer'''
     ex = wx.App()
     MainFrame(None, 'Tracer')
     ex.MainLoop()
