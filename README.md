@@ -22,11 +22,11 @@ Tracer keeps history of highlighted nodes, user could rely on buttons from toolb
 
 ## Display embedded graphs
 In property panel, select corresponding attribute, click on "..." button, embedded graph will be display in a new frame:\
-<img src="https://github.com/RandySheriffH/tracer/blob/master/snaps/OpenEmbedded.PNG" width=350 height=120>
+<img src="https://github.com/RandySheriffH/tracer/blob/master/snaps/OpenEmbedded.PNG" width=370 height=120>
 
 ## Trace upstream and downstream
 In property panel, select the input and click on "..." button to go to upstream node, for output it's similar:\
-<img src="https://github.com/RandySheriffH/tracer/blob/master/snaps/Upstream.PNG" width=350 height=120>
+<img src="https://github.com/RandySheriffH/tracer/blob/master/snaps/Upstream.PNG" width=370 height=120>
 
 ## Search
 Just type keyword in search input box on right-top corner, select matching item from drop-down and click on search button:\
