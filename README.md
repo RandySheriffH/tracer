@@ -11,8 +11,8 @@ Tracer is a desktop app to render deep learning models:
 - git clone the project
 - run "python setup.py install"
 - open python terminal and run:
-	> from tracer import tracer
-	> tracer.show()
+    - from tracer import tracer
+    - tracer.show()
 
 
 ## Trace back and forth
