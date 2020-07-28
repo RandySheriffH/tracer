@@ -6,7 +6,7 @@ Tracer is a desktop app to render deep learning models:
 - Trace upstream and downstream
 - Search node by keyword
 
-## Usage
+## Install
 
 - git clone the project
 - pip install -r requirements.txt
