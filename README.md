@@ -29,7 +29,7 @@ In property panel, select corresponding attribute, click on "..." button, embedd
 <img src="https://github.com/RandySheriffH/tracer/blob/master/snaps/OpenEmbedded.PNG" width=370 height=120>
 
 ## Trace upstream and downstream
-In property panel, select the input and click on "..." button to go to upstream node, for output it's similar:\
+In property panel, select the input and click on "..." button to go to upstream node, same for output:\
 <img src="https://github.com/RandySheriffH/tracer/blob/master/snaps/Upstream.PNG" width=370 height=120>
 
 ## Search
