@@ -41,6 +41,8 @@ Just type keyword in search input box on right-top corner, select matching item 
 
 <img src="https://github.com/RandySheriffH/tracer/blob/master/snaps/Search.PNG" width=300 height=120>
 
+Note that searching happens recursively - nodes of embedded graph will all be included.
+
 ## Limitations
 By far only support tensorflow and onnx models.\
 Welcome to [contribute]().
