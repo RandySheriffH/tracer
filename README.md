@@ -8,8 +8,8 @@ Tracer is a desktop app to render deep learning models:
 
 ## Install
 
-- git clone the project
 - install graphviz from graphviz.org and add its bin to PATH
+- git clone the project
 - pip install -r requirements.txt
 - run "python setup.py install"
 - open python terminal and run:
