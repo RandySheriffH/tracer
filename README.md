@@ -26,7 +26,7 @@ Tracer keeps history of highlighted nodes, user could rely on buttons from toolb
 <img src="https://github.com/RandySheriffH/tracer/blob/master/snaps/BackForth.PNG" width=300 height=120>
 
 ## Display embedded graphs
-In property panel, select corresponding attribute, click on "..." button, embedded graph will be display in a new frame:\
+In property panel, select corresponding attribute, click on "..." button, embedded graph will be rendered in a new frame:\
 <img src="https://github.com/RandySheriffH/tracer/blob/master/snaps/OpenEmbedded.PNG" width=370 height=120>
 
 ## Trace upstream and downstream
