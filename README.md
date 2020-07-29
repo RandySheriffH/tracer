@@ -1,11 +1,11 @@
 # <img src="https://github.com/RandySheriffH/tracer/blob/master/snaps/Tracer.jpg" width=30 height=25> Tracer
 Tracer is a desktop app to render deep learning models:
 
-- Keep history of browsing for easy trace back
-- Support viewing of embedded graphs 
-- [Show large graphs by layers](http://)
-- Trace upstream and downstream
-- Search node by keyword
+- keep browsing history for easy trace back
+- support viewing of embedded graphs 
+- [show large graphs by layers](http://)
+- track upstream and downstream
+- search node by keyword
 
 ## Install
 
