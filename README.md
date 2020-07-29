@@ -44,5 +44,5 @@ Just type keyword in search input box on right-top corner, select matching item 
 Note that searching happens recursively - nodes of embedded graph will all be included.
 
 ## Limitations
-By far only support tensorflow and onnx models.\
+By far only tensorflow and onnx models are supported.\
 Welcome to [contribute](https://github.com/RandySheriffH/tracer/blob/master/docs/CONTRIBUTE.md).
