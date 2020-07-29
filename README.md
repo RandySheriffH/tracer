@@ -45,4 +45,4 @@ Note that searching happens recursively - nodes of embedded graph will all be in
 
 ## Limitations
 By far only support tensorflow and onnx models.\
-Welcome to [contribute]((https://github.com/RandySheriffH/tracer/blob/master/docs/CONTRIBUTE.md)).
+Welcome to [contribute](https://github.com/RandySheriffH/tracer/blob/master/docs/CONTRIBUTE.md).
