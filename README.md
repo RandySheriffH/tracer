@@ -3,7 +3,7 @@ Tracer is a desktop app to render deep learning models:
 
 - keep browsing history for easy trace back
 - support viewing of embedded graphs 
-- [show large graphs by layers](https://github.com/RandySheriffH/tracer/blob/master/docs/LAYERED.md)
+- [show large graph by layers](https://github.com/RandySheriffH/tracer/blob/master/docs/LAYERED.md)
 - track upstream and downstream
 - search node by keyword
 
@@ -45,4 +45,4 @@ Note that searching happens recursively - nodes of embedded graph will all be in
 
 ## Limitations
 By far only support tensorflow and onnx models.\
-Welcome to [contribute]().
+Welcome to [contribute]((https://github.com/RandySheriffH/tracer/blob/master/docs/CONTRIBUTE.md)).
