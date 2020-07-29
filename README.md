@@ -25,11 +25,11 @@ Tracer is a desktop app to render deep learning models:
 Tracer keeps history of highlighted nodes, user could rely on buttons from toolbar to go back and forth:\
 <img src="https://github.com/RandySheriffH/tracer/blob/master/snaps/BackForth.PNG" width=300 height=120>
 
-## Display embedded graphs
+## View embedded graphs
 In property panel, select corresponding attribute, click on "..." button, embedded graph will be rendered in a new frame:\
 <img src="https://github.com/RandySheriffH/tracer/blob/master/snaps/OpenEmbedded.PNG" width=370 height=120>
 
-## Trace upstream and downstream
+## Track upstream and downstream
 In property panel, select the input and click on "..." button to go to upstream node, same for output:\
 <img src="https://github.com/RandySheriffH/tracer/blob/master/snaps/Upstream.PNG" width=370 height=120>
 
@@ -38,4 +38,5 @@ Just type keyword in search input box on right-top corner, select matching item 
 <img src="https://github.com/RandySheriffH/tracer/blob/master/snaps/Search.PNG" width=300 height=120>
 
 ## Limitations
-For now tracer only support viewing of tensorflow and onnx models. Contributions are highly welcomed - just add a new parser in parsers.py following the comments.
+By far only support tensorflow and onnx models.\
+Welcome to [contribute]().
