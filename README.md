@@ -10,7 +10,7 @@ Tracer is a desktop app to render deep learning models:
 ## Install
 
 - install latest [graphviz](http://graphviz.org) and add its bin to PATH
-- git clone the project
+- git clone the tracer project
 - pip install -r requirements.txt
 - pip install tensorflow==2.x if need to view tensorflow models
 - pip install onnx if need to view onnx models
