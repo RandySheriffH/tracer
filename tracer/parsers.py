@@ -568,6 +568,19 @@ class TFCKParser(TFParser):
             saver.restore(sess, model_file_path[:-5])
             return sess.graph, self.count_ops(sess.graph)
 
+class KerasParser(TFParser):
+    '''parser for keras models'''
+
+    def __init__(self):
+        TFParser.__init__(self)
+
+    def load_graph(self, model_file_path):
+        from tensorflow.python import keras as _keras
+        _keras.backend.clear_session()
+        _keras.backend.set_learning_phase(False)
+        keras_model = _keras.models.load_model(model_path, custom_objects)
+        sess = _keras.backend.get_session()
+        return sess.graph, self.count_ops(sess.graph)
 
 def parse(model_file_path, init_progress_callback, updage_progress_callback):
     '''parse model from file and return graph'''
@@ -578,5 +591,8 @@ def parse(model_file_path, init_progress_callback, updage_progress_callback):
         parser = TFParser()
     elif suffix == '.meta':
         parser = TFCKParser()
-    else: raise TypeError('Unkown model type!')
+    elif parser == '.h5':
+        parser = KerasParser()
+    else:
+        raise TypeError('Unkown model type!')
     return parser.parse(model_file_path, init_progress_callback, updage_progress_callback)

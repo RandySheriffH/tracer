@@ -540,6 +540,9 @@ class MainFrame(wx.MDIParentFrame):
         except RuntimeError as err:
             wx.MessageDialog(self, 'Failed to open model due to runtime error: '\
                              + str(err)).ShowModal()
+        except TypeError as err:
+            wx.MessageDialog(self, 'Model format not yet support').ShowModal()
+
         progress.Destroy()
         if cancelled is False:
             self.show_frame(graph)
