@@ -579,7 +579,7 @@ class KerasParser(TFParser):
         _keras.backend.clear_session()
         custom_objects = None
         _keras.backend.set_learning_phase(False)
-        keras_model = _keras.models.load_model(model_file_path, custom_objects)
+        _keras.models.load_model(model_file_path, custom_objects)
         sess = _keras.backend.get_session()
         return sess.graph, self.count_ops(sess.graph)
 
