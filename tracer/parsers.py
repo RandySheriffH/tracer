@@ -591,7 +591,7 @@ def parse(model_file_path, init_progress_callback, updage_progress_callback):
         parser = TFParser()
     elif suffix == '.meta':
         parser = TFCKParser()
-    elif parser == '.h5':
+    elif suffix == '.h5':
         parser = KerasParser()
     else:
         raise TypeError('Unkown model type!')
