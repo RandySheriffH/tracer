@@ -9,4 +9,4 @@ To add parser for new model format, just create a new class inherit from class [
 - load_graph
 - get_type
 
-Finally, go to function [parse](https://github.com/RandySheriffH/tracer/blob/master/tracer/parsers.py#L572) to add new entry for the class.
+Finally, go to function [parse](https://github.com/RandySheriffH/tracer/blob/master/tracer/parsers.py#L590) to add new entry for the class.
