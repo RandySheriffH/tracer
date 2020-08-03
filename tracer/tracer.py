@@ -537,11 +537,10 @@ class MainFrame(wx.MDIParentFrame):
         except graphviz.backend.ExecutableNotFound:
             wx.MessageDialog(self, 'Please install latest graphviz from \
                                     www.graphviz.org and add it to PATH').ShowModal()
-        except RuntimeError as err:
-            wx.MessageDialog(self, 'Failed to open model due to runtime error: '\
-                             + str(err)).ShowModal()
         except TypeError as err:
             wx.MessageDialog(self, 'Model format not yet support').ShowModal()
+        except Exception as err:
+            wx.MessageDialog(self, 'Failed to open model due to: ' + str(err)).ShowModal()
 
         progress.Destroy()
         if cancelled is False:
