@@ -1,5 +1,5 @@
 # Contribute
-To add parser for new model format, just subclass [Parser](https://github.com/RandySheriffH/tracer/blob/master/tracer/parsers.py#L14) and override methods:
+For new format, just subclass [Parser](https://github.com/RandySheriffH/tracer/blob/master/tracer/parsers.py#L14) and override methods:
 
 - get_ops
 - get_inputs_outputs
@@ -9,4 +9,4 @@ To add parser for new model format, just subclass [Parser](https://github.com/Ra
 - load_graph
 - get_type
 
-Finally, go to function [parse](https://github.com/RandySheriffH/tracer/blob/master/tracer/parsers.py#L590) to add new entry for the class.
+And add entry under [parse](https://github.com/RandySheriffH/tracer/blob/master/tracer/parsers.py#L590).
