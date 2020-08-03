@@ -9,4 +9,4 @@ For new format, just subclass [Parser](https://github.com/RandySheriffH/tracer/b
 - load_graph
 - get_type
 
-And add entry under [parse](https://github.com/RandySheriffH/tracer/blob/master/tracer/parsers.py#L590).
+Then add entry under [parse](https://github.com/RandySheriffH/tracer/blob/master/tracer/parsers.py#L590).
