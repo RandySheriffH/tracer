@@ -1,5 +1,5 @@
 # Contribute
-To add parser for new model format, just create a new class inherit from class [Parser](https://github.com/RandySheriffH/tracer/blob/master/tracer/parsers.py#L14) and define all unimplemented methods:
+To add parser for new model format, just subclass [Parser](https://github.com/RandySheriffH/tracer/blob/master/tracer/parsers.py#L14) and override methods:
 
 - get_ops
 - get_inputs_outputs
