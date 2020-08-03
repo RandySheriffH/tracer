@@ -124,7 +124,7 @@ class Parser:
                     attrs, subgraphs = self.get_attr(operator)
                     for subgraph in subgraphs:
                         sub_graph['subgraphs'][subgraph] =\
-                            self.parse_graph(subgraphs[subgraph], subgraphs,
+                            self.parse_graph(subgraphs[subgraph], subgraph,
                                              updage_progress_callback,
                                              max_node_per_graph)
 
