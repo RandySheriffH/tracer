@@ -8,7 +8,7 @@ import time
 
 from pathlib import Path
 from graphviz import Digraph
-from .utils import get_temp, to_int
+from .utils import get_temp, to_int, UnknownFormatError
 
 
 class Parser:
@@ -241,7 +241,9 @@ class Parser:
             graph['size'] = (int(float(jobj['bb'].split(',')[2])),
                              int(float(jobj['bb'].split(',')[3])))
 
-            for vertice in jobj['objects']:
+            vertices = jobj['objects'] if 'objects' in jobj else []
+
+            for vertice in vertices:
                 points = vertice['_draw_'][1]['points']
                 lefttop = points[2]
                 rightbtm = points[0]
@@ -262,7 +264,8 @@ class Parser:
                 graph['vertices'][input_v]['edges'].append(label)
                 graph['vertices'][output_v]['edges'].append(label)
 
-            graph['selected'] = jobj['objects'][-1]['name']
+            if 'objects' in jobj:
+                graph['selected'] = jobj['objects'][-1]['name']
 
 
 class OnnxParser(Parser):
@@ -568,6 +571,7 @@ class TFCKParser(TFParser):
             saver.restore(sess, model_file_path[:-5])
             return sess.graph, self.count_ops(sess.graph)
 
+
 class KerasParser(TFParser):
     '''parser for keras models'''
 
@@ -575,13 +579,13 @@ class KerasParser(TFParser):
         TFParser.__init__(self)
 
     def load_graph(self, model_file_path):
-        from tensorflow.python import keras as _keras
-        _keras.backend.clear_session()
-        custom_objects = None
-        _keras.backend.set_learning_phase(False)
-        _keras.models.load_model(model_file_path, custom_objects)
-        sess = _keras.backend.get_session()
-        return sess.graph, self.count_ops(sess.graph)
+        from tensorflow import keras
+        keras.backend.clear_session()
+        keras.backend.set_learning_phase(False)
+        model = keras.models.load_model(model_file_path)
+        graph = model.outputs[0].graph
+        return graph, self.count_ops(graph)
+
 
 def parse(model_file_path, init_progress_callback, updage_progress_callback):
     '''parse model from file and return graph'''
@@ -595,5 +599,5 @@ def parse(model_file_path, init_progress_callback, updage_progress_callback):
     elif suffix == '.h5':
         parser = KerasParser()
     else:
-        raise TypeError('Unkown model type!')
+        raise UnknownFormatError('Unkown model format!')
     return parser.parse(model_file_path, init_progress_callback, updage_progress_callback)

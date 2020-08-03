@@ -30,3 +30,9 @@ def remove_temp():
 def pwd():
     '''return path to the file'''
     return os.path.dirname(__file__)
+
+
+class UnknownFormatError(RuntimeError):
+    '''raise on unsupported model format'''
+    def __init__(self, message):
+        RuntimeError.__init__(self, message)

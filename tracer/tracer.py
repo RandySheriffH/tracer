@@ -9,7 +9,7 @@ import wx
 from wx import Point, propgrid
 import graphviz
 from .parsers import parse
-from .utils import to_int, pwd, create_temp, remove_temp
+from .utils import to_int, pwd, create_temp, remove_temp, UnknownFormatError
 
 
 class About(wx.Dialog):
@@ -276,14 +276,17 @@ class ChildFrame(wx.MDIChildFrame):
         x_start = xy_strt[0] * xy_unit[0]
         y_start = xy_strt[1] * xy_unit[1]
         target_rect = (x_start, y_start, xy_size[0], xy_size[1])
-        vertice = self.graph['vertices'][self.graph['selected']]
 
-        if not ChildFrame.intersect(target_rect, vertice['rect']):
-            self.canvas.Scroll(vertice['rect'][0]/self.x_units, vertice['rect'][1]/self.y_units)
+        if self.graph['selected'] in self.graph['vertices']:
+            vertice = self.graph['vertices'][self.graph['selected']]
+            if not ChildFrame.intersect(target_rect, vertice['rect']):
+                self.canvas.Scroll(vertice['rect'][0]/self.x_units, vertice['rect'][1]/self.y_units)
 
     def set_property(self):
         '''set property panel'''
         v = self.graph['selected']
+        if v not in self.graph['vertices']:
+            return
         name_property = self.property.GetPropertyByLabel('name')
         if name_property is not None and name_property.GetValue() == v:
             return
@@ -383,15 +386,16 @@ class ChildFrame(wx.MDIChildFrame):
                                 to_int(self.graph['vertices'][vertice]['label']))
                     break
 
-        vertice = self.graph['vertices'][self.graph['selected']]
-        dc.SetPen(wx.Pen("red", 2))
-        dc.DrawRoundedRectangle(vertice['rect'], 3)
-        dc.DrawText(vertice['type'], to_int(vertice['label']))
+        if self.graph['selected'] in self.graph['vertices']:
+            vertice = self.graph['vertices'][self.graph['selected']]
+            dc.SetPen(wx.Pen("red", 2))
+            dc.DrawRoundedRectangle(vertice['rect'], 3)
+            dc.DrawText(vertice['type'], to_int(vertice['label']))
 
-        for edge in vertice['edges']:
-            if edge in self.graph['edges']:
-                dc.DrawSpline(self.graph['edges'][edge]['spline'])
-                dc.DrawPolygon(self.graph['edges'][edge]['arrow'])
+            for edge in vertice['edges']:
+                if edge in self.graph['edges']:
+                    dc.DrawSpline(self.graph['edges'][edge]['spline'])
+                    dc.DrawPolygon(self.graph['edges'][edge]['arrow'])
 
         self.set_property()
         self.thumbnail.Refresh()
@@ -537,10 +541,10 @@ class MainFrame(wx.MDIParentFrame):
         except graphviz.backend.ExecutableNotFound:
             wx.MessageDialog(self, 'Please install latest graphviz from \
                                     www.graphviz.org and add it to PATH').ShowModal()
-        except TypeError as err:
-            wx.MessageDialog(self, 'Model format not yet support').ShowModal()
+        except UnknownFormatError as err:
+            wx.MessageDialog(self, str(err)).ShowModal()
         except Exception as err:
-            wx.MessageDialog(self, 'Failed to open model due to: ' + str(err)).ShowModal()
+            wx.MessageDialog(self, 'Caught exception: ' + str(err)).ShowModal()
 
         progress.Destroy()
         if cancelled is False:
