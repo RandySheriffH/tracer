@@ -364,7 +364,7 @@ class OnnxParser(Parser):
         import onnx
         from onnx import shape_inference
         model = shape_inference.infer_shapes(onnx.load(model_file_path))
-        model = onnx.load(model_file_path)
+        # model = onnx.load(model_file_path)
         self.fill_type_shape(model.graph)
         # print ('model version:', model.model_version)
         return model.graph, self.count_ops(model.graph)
