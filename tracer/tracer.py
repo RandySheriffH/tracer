@@ -95,6 +95,12 @@ class ChildFrame(wx.MDIChildFrame):
         elif self.graph['type'] == 'tensorflow':
             icon.CopyFromBitmap(wx.Bitmap(os.path.join(pwd(), 'icons', 'tf.png'),
                                           wx.BITMAP_TYPE_ANY))
+        elif self.graph['type'] == 'keras':
+            icon.CopyFromBitmap(wx.Bitmap(os.path.join(pwd(), 'icons', 'keras.png'),
+                                          wx.BITMAP_TYPE_ANY))
+        elif self.graph['type'] == 'pytorch':
+            icon.CopyFromBitmap(wx.Bitmap(os.path.join(pwd(), 'icons', 'pytorch.png'),
+                                          wx.BITMAP_TYPE_ANY))
         else: icon.CopyFromBitmap(wx.Bitmap(os.path.join(pwd(), 'icons', 'model.png'),
                                             wx.BITMAP_TYPE_ANY))
         self.SetIcon(icon)
@@ -543,8 +549,8 @@ class MainFrame(wx.MDIParentFrame):
                                     www.graphviz.org and add it to PATH').ShowModal()
         except UnknownFormatError as err:
             wx.MessageDialog(self, str(err)).ShowModal()
-        except Exception as err:
-            wx.MessageDialog(self, 'Caught exception: ' + str(err)).ShowModal()
+        #except Exception as err:
+        #    wx.MessageDialog(self, 'Caught exception: ' + str(err)).ShowModal()
 
         progress.Destroy()
         if cancelled is False:

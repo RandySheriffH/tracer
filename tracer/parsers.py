@@ -1,11 +1,10 @@
 # Licensed under the MIT license.
 '''Parers to read models'''
-#pylint: disable=no-member,import-outside-toplevel,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,protected-access
+#pylint: disable=no-member,import-outside-toplevel,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,protected-access,anomalous-backslash-in-string
 
 import os
 import json
 import time
-
 from pathlib import Path
 from graphviz import Digraph
 from .utils import get_temp, to_int, UnknownFormatError
@@ -37,7 +36,7 @@ class Parser:
         '''return attrs and all referred subgraphs'''
         raise NotImplementedError('Not implemented!')
 
-    def load_graph(self, model_file_path):
+    def load_graph(self, model_path):
         '''return graph and total number of ops'''
         raise NotImplementedError('Not implemented!')
 
@@ -75,18 +74,18 @@ class Parser:
         write_graph(graph, global_map)
         return graph
 
-    def parse(self, model_file_path,
+    def parse(self, model_path,
               init_progress_callback,
               updage_progress_callback,
               max_node_per_graph=600):
         '''parse graph and return parsed'''
 
-        model_graph, total_ops = self.load_graph(model_file_path)
+        model_graph, total_ops = self.load_graph(model_path)
         init_progress_callback(total_ops)
         ret, _ = updage_progress_callback(0)
         if ret:
             return Parser.fill_output_map(self.parse_graph(model_graph,
-                                                           Path(model_file_path).stem,
+                                                           Path(model_path).stem,
                                                            updage_progress_callback,
                                                            max_node_per_graph))
         return None
@@ -360,11 +359,11 @@ class OnnxParser(Parser):
             if len(dims) > 0:
                 self.shapes[name] = str(dims)
 
-    def load_graph(self, model_file_path):
+    def load_graph(self, model_path):
         import onnx
         from onnx import shape_inference
-        model = shape_inference.infer_shapes(onnx.load(model_file_path))
-        # model = onnx.load(model_file_path)
+        model = shape_inference.infer_shapes(onnx.load(model_path))
+        # model = onnx.load(model_path)
         self.fill_type_shape(model.graph)
         # print ('model version:', model.model_version)
         return model.graph, self.count_ops(model.graph)
@@ -517,10 +516,10 @@ class TFParser(Parser):
             return 'variant'
         return str(value)
 
-    def load_graph(self, model_file_path):
+    def load_graph(self, model_path):
         import tensorflow as tf
         tf.compat.v1.reset_default_graph()
-        path_stem = os.path.dirname(model_file_path)
+        path_stem = os.path.dirname(model_path)
         if path_stem.endswith('saved_model'):
             imported = tf.saved_model.load(path_stem)
             from tensorflow.python.framework.convert_to_constants\
@@ -537,7 +536,7 @@ class TFParser(Parser):
             with tf.compat.v1.Session() as sess:
                 graph_def = tf.compat.v1.GraphDef()
                 # print ("graph_def version:", graph_def.version)
-                with tf.io.gfile.GFile(model_file_path, 'rb') as model_f:
+                with tf.io.gfile.GFile(model_path, 'rb') as model_f:
                     graph_def.ParseFromString(model_f.read())
                     tf.import_graph_def(graph_def, name='')
                     return sess.graph, self.count_ops(sess.graph)
@@ -563,12 +562,12 @@ class TFCKParser(TFParser):
     def __init__(self):
         TFParser.__init__(self)
 
-    def load_graph(self, model_file_path):
+    def load_graph(self, model_path):
         import tensorflow as tf
         tf.compat.v1.reset_default_graph()
         with tf.compat.v1.Session() as sess:
-            saver = tf.compat.v1.train.import_meta_graph(model_file_path, clear_devices=True)
-            saver.restore(sess, model_file_path[:-5])
+            saver = tf.compat.v1.train.import_meta_graph(model_path, clear_devices=True)
+            saver.restore(sess, model_path[:-5])
             return sess.graph, self.count_ops(sess.graph)
 
 
@@ -578,18 +577,78 @@ class KerasParser(TFParser):
     def __init__(self):
         TFParser.__init__(self)
 
-    def load_graph(self, model_file_path):
+    def load_graph(self, model_path):
         from tensorflow import keras
         keras.backend.clear_session()
         keras.backend.set_learning_phase(False)
-        model = keras.models.load_model(model_file_path)
+        model = keras.models.load_model(model_path)
         graph = model.outputs[0].graph
         return graph, self.count_ops(graph)
 
+    def get_type(self):
+        return 'keras'
 
-def parse(model_file_path, init_progress_callback, updage_progress_callback):
+
+class TorchParser(Parser):
+    '''parser for pytorch models'''
+
+    def __init__(self):
+        Parser.__init__(self)
+
+    def get_ops(self, model_graph):
+        return list(model_graph.nodes())
+
+    def get_inputs_outputs(self, operator):
+
+        '''
+        def get_shape(torch_node):
+            import re
+            matched = re.match(r".*Float\(([\d\s\,]+)\).*", str(next(torch_node.outputs())))
+            if matched:
+                shape = matched.group(1)
+                shape = shape.split(",")
+                shape = tuple(map(int, shape))
+            else:
+                shape = None
+            return shape
+        '''
+
+        inputs = [str(ii.unique()) for ii in operator.inputs()]
+        outputs = [str(o.unique()) for o in operator.outputs()]
+        shapes = [None for o_iter in outputs]
+        types = [str(o.type()) for o in operator.outputs()]
+
+        return inputs, outputs, shapes, types
+
+    def get_op_name(self, operator):
+        return operator.scopeName() +\
+               "/outputs/" +\
+               "/".join(["{}".format(o.unique()) for o in operator.outputs()])
+
+    def get_op_type(self, operator):
+        return operator.kind()
+
+    def get_attr(self, operator):
+        attrs = {}
+        for attr_name in operator.attributeNames():
+            attrs[attr_name] = {'type': 'string', 'value': str(operator[attr_name])}
+        return attrs, {}
+
+    def load_graph(self, model_path):
+        import torch
+        model = torch.load(model_path)
+        model_input = torch.randn(1, 3, 224, 224)
+        raw_graph, _ = torch.jit._get_trace_graph(model, (model_input))
+        graph = torch.onnx._optimize_trace(raw_graph, torch.onnx.OperatorExportTypes.ONNX)
+        return graph, len(list(graph.nodes()))
+
+    def get_type(self):
+        return 'pytorch'
+
+
+def parse(model_path, init_progress_callback, updage_progress_callback):
     '''parse model from file and return graph'''
-    suffix = Path(model_file_path).suffix
+    suffix = Path(model_path).suffix
     if suffix == '.onnx':
         parser = OnnxParser()
     elif suffix == '.pb':
@@ -598,6 +657,8 @@ def parse(model_file_path, init_progress_callback, updage_progress_callback):
         parser = TFCKParser()
     elif suffix == '.h5':
         parser = KerasParser()
+    elif suffix == '.pkl':
+        parser = TorchParser()
     else:
         raise UnknownFormatError('Unkown model format!')
-    return parser.parse(model_file_path, init_progress_callback, updage_progress_callback)
+    return parser.parse(model_path, init_progress_callback, updage_progress_callback)
