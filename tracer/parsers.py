@@ -7,7 +7,7 @@ import json
 import time
 from pathlib import Path
 from graphviz import Digraph
-from .utils import get_temp, to_int, UnknownFormatError
+from utils import get_temp, to_int, UnknownFormatError
 
 
 class Parser:
@@ -77,7 +77,8 @@ class Parser:
     def parse(self, model_path,
               init_progress_callback,
               updage_progress_callback,
-              max_node_per_graph=600):
+              max_node_per_graph=600,
+              render=True):
         '''parse graph and return parsed'''
 
         model_graph, total_ops = self.load_graph(model_path)
@@ -87,7 +88,7 @@ class Parser:
             return Parser.fill_output_map(self.parse_graph(model_graph,
                                                            Path(model_path).stem,
                                                            updage_progress_callback,
-                                                           max_node_per_graph))
+                                                           max_node_per_graph, render))
         return None
 
     @staticmethod
@@ -100,7 +101,7 @@ class Parser:
                     model_graph,
                     graph_name,
                     updage_progress_callback,
-                    max_node_per_graph):
+                    max_node_per_graph, render):
         '''parse graph and all embedded'''
 
         graph = Parser.empty_graph()
@@ -125,7 +126,7 @@ class Parser:
                         sub_graph['subgraphs'][subgraph] =\
                             self.parse_graph(subgraphs[subgraph], subgraph,
                                              updage_progress_callback,
-                                             max_node_per_graph)
+                                             max_node_per_graph, render)
 
                     inputs, outputs, output_shapes, output_types = self.get_inputs_outputs(operator)
 
@@ -152,7 +153,9 @@ class Parser:
                     if ret is False:
                         return None
 
-                Parser.render(sub_graph)
+                if render:
+                    Parser.render(sub_graph)
+
                 graph['vertices'][sub_graph_name] =\
                     {'type': '+',
                      'attrs': {'graph part':{'type': 'subgraph', 'value': sub_graph_name}},
@@ -183,7 +186,7 @@ class Parser:
                 for subgraph in subgraphs:
                     graph['subgraphs'][subgraph] = self.parse_graph(subgraphs[subgraph], subgraph,\
                                                             updage_progress_callback,\
-                                                            max_node_per_graph)
+                                                            max_node_per_graph, render)
 
                 inputs, outputs, output_shapes, output_types = self.get_inputs_outputs(operator)
                 vertice = {'type': self.get_op_type(operator),
@@ -205,7 +208,9 @@ class Parser:
                 if ret is False:
                     return None
 
-        Parser.render(graph)
+        if render:
+            Parser.render(graph)
+
         return graph
 
     @staticmethod
@@ -646,7 +651,7 @@ class TorchParser(Parser):
         return 'pytorch'
 
 
-def parse(model_path, init_progress_callback, updage_progress_callback):
+def parse(model_path, init_progress_callback, updage_progress_callback, render=False):
     '''parse model from file and return graph'''
     suffix = Path(model_path).suffix
     if suffix == '.onnx':
@@ -661,4 +666,4 @@ def parse(model_path, init_progress_callback, updage_progress_callback):
         parser = TorchParser()
     else:
         raise UnknownFormatError('Unkown model format!')
-    return parser.parse(model_path, init_progress_callback, updage_progress_callback)
+    return parser.parse(model_path, init_progress_callback, updage_progress_callback, render=render)

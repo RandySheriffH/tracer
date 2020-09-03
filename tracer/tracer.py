@@ -8,8 +8,8 @@ import math
 import wx
 from wx import Point, propgrid
 import graphviz
-from .parsers import parse
-from .utils import to_int, pwd, create_temp, remove_temp, UnknownFormatError
+from parsers import parse
+from utils import to_int, pwd, create_temp, remove_temp, UnknownFormatError
 
 
 class About(wx.Dialog):
