@@ -15,4 +15,4 @@ def update_callback(n):
     return True, True
 
 if __name__ == '__main__':
-    render(parse('C:\\Users\\rashuai\\OneDrive\\TheWork\\models\\cond.pb', init_callback, update_callback, False))
+    render(parse('.\\loop.pb', init_callback, update_callback, False))
