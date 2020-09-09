@@ -18,6 +18,8 @@ style = {
 
 def render(dc, graph):
 
+    graph['edges'] = {}
+
     def get_topology():
 
         topology = {}
@@ -271,8 +273,13 @@ def render(dc, graph):
                                          graph['edges'][edge]['arrow_left'],
                                          graph['edges'][edge]['arrow_right']]
 
-    graph['size'] = (max_width, (len(offset_per_level) + 1) * 2 * style['outter_padding'][1] + 
-                                len(offset_per_level) * rect_height)
+    if directions[graph['direction']] in ['topdown', 'bottomup']:
+        graph['size'] = (max_width,
+                         (len(offset_per_level) + 1) * 2 * style['outter_padding'][1] + 
+                          len(offset_per_level) * rect_height)
+    else:
+        graph['size'] = ((len(offset_per_level) + 1) * 2 * style['outter_padding'][0] + 
+                         len(offset_per_level) * max_rect_width, max_width)
     graph['selected'] = list(graph['vertices'].keys())[0]
     graph['rendered'] = True
 
