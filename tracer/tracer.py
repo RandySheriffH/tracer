@@ -8,8 +8,9 @@ import math
 import wx
 from wx import Point, propgrid
 import graphviz
-from parsers import parse
-from utils import to_int, pwd, create_temp, remove_temp, UnknownFormatError
+from .parsers import parse
+from .render import render, directions
+from .utils import to_int, pwd, create_temp, remove_temp, UnknownFormatError
 
 
 class About(wx.Dialog):
@@ -81,7 +82,8 @@ class ChildFrame(wx.MDIChildFrame):
     '''child frame to show a graph'''
 
     def __init__(self, parent, title, graph):
-        super(ChildFrame, self).__init__(parent, title=title, size=graph['size'])
+        #super(ChildFrame, self).__init__(parent, title=title, size=graph['size'])
+        super(ChildFrame, self).__init__(parent, title=title)
         self.graph = graph
         self.pen_color = wx.Colour('black')
         self.foreground_color = wx.Colour('gray')
@@ -124,9 +126,11 @@ class ChildFrame(wx.MDIChildFrame):
         canvas_size = self.canvas.GetSize()
         self.x_units = canvas_size[0]/2
         self.y_units = canvas_size[1]/2
+        '''
         x_steps = math.ceil(float(self.graph['size'][0])/self.x_units)
         y_steps = math.ceil(float(self.graph['size'][1])/self.y_units)
         self.canvas.SetScrollbars(self.x_units, self.y_units, x_steps, y_steps, 0, 0, True)
+        '''
         self.GetParent().add_history([self.GetId(), self.graph['name'], self.graph['selected']])
 
     def get_dict(self, graph, dictionary):
@@ -366,6 +370,12 @@ class ChildFrame(wx.MDIChildFrame):
         dc.SetFont(font)
         self.canvas.PrepareDC(dc)
 
+        if not self.graph['rendered']:
+            render(dc, self.graph)
+            x_steps = math.ceil(float(self.graph['size'][0])/self.x_units)
+            y_steps = math.ceil(float(self.graph['size'][1])/self.y_units)
+            self.canvas.SetScrollbars(self.x_units, self.y_units, x_steps, y_steps, 0, 0, True)
+
         graph_size = self.graph['size']
 
         if canvas_size[0] < graph_size[0] and canvas_size[1] < graph_size[1]:
@@ -422,6 +432,10 @@ class ChildFrame(wx.MDIChildFrame):
                 sg['selected'] = v
                 self.GetParent().show_frame(sg)
 
+    def rotate(self):
+        self.graph['direction'] = (self.graph['direction'] + 1) % len(directions)
+        self.graph['rendered'] = False
+        self.Refresh()
 
 class MainFrame(wx.MDIParentFrame):
     '''main frame'''
@@ -460,9 +474,12 @@ class MainFrame(wx.MDIParentFrame):
         self.ToolBar.AddTool(4, 'lightdrop',
                              wx.Bitmap(os.path.join(pwd(), 'icons', 'whitedrop.png')),
                              'light backdrop')
+        self.ToolBar.AddTool(5, 'rotate',
+                             wx.Bitmap(os.path.join(pwd(), 'icons', 'rotate.png')),
+                             'roate graph clockwise')
         self.SetToolBar(self.ToolBar)
         self.ToolBar.Realize()
-        self.ToolBar.Bind(wx.EVT_TOOL, self.on_move)
+        self.ToolBar.Bind(wx.EVT_TOOL, self.on_toolbar_clicked)
         self.Maximize(True)
         self.Search = wx.SearchCtrl(self.ToolBar,
                                     pos=(self.GetSize()[0]-260, 7),
@@ -561,7 +578,7 @@ class MainFrame(wx.MDIParentFrame):
         self.history.append(record)
         self.history_at = len(self.history) -1
 
-    def on_move(self, event):
+    def on_toolbar_clicked(self, event):
         '''handle toolbar event'''
         tid = event.GetId()
 
@@ -603,6 +620,12 @@ class MainFrame(wx.MDIParentFrame):
             frame.foreground_color = wx.Colour('gray')
             frame.background_color = wx.Colour('white')
             frame.Refresh()
+
+        elif tid == 5:
+            frame = self.GetActiveChild()
+            if frame is None:
+                return
+            frame.rotate()
 
 
 def show():

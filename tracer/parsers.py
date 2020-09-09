@@ -6,8 +6,7 @@ import os
 import json
 import time
 from pathlib import Path
-from graphviz import Digraph
-from utils import get_temp, to_int, UnknownFormatError
+from .utils import get_temp, to_int, UnknownFormatError
 
 
 class Parser:
@@ -77,8 +76,7 @@ class Parser:
     def parse(self, model_path,
               init_progress_callback,
               updage_progress_callback,
-              max_node_per_graph=600,
-              render=True):
+              max_node_per_graph=600):
         '''parse graph and return parsed'''
 
         model_graph, total_ops = self.load_graph(model_path)
@@ -88,20 +86,20 @@ class Parser:
             return Parser.fill_output_map(self.parse_graph(model_graph,
                                                            Path(model_path).stem,
                                                            updage_progress_callback,
-                                                           max_node_per_graph, render))
+                                                           max_node_per_graph))
         return None
 
     @staticmethod
     def empty_graph():
         '''empty graph in json'''
-        return {'name': '', 'type': '', 'vertices': {}, 'shapes': {},\
-               'types': {}, 'edges': {}, 'selected':'', 'subgraphs':{}, 'map':{}}
+        return {'name': '', 'type': '', 'vertices': {}, 'shapes': {}, 'rendered': False,\
+               'types': {}, 'edges': {}, 'selected':'', 'subgraphs':{}, 'map':{}, 'direction': 0}
 
     def parse_graph(self,
                     model_graph,
                     graph_name,
                     updage_progress_callback,
-                    max_node_per_graph, render):
+                    max_node_per_graph):
         '''parse graph and all embedded'''
 
         graph = Parser.empty_graph()
@@ -126,7 +124,7 @@ class Parser:
                         sub_graph['subgraphs'][subgraph] =\
                             self.parse_graph(subgraphs[subgraph], subgraph,
                                              updage_progress_callback,
-                                             max_node_per_graph, render)
+                                             max_node_per_graph)
 
                     inputs, outputs, output_shapes, output_types = self.get_inputs_outputs(operator)
 
@@ -153,9 +151,6 @@ class Parser:
                     if ret is False:
                         return None
 
-                if render:
-                    Parser.render(sub_graph)
-
                 graph['vertices'][sub_graph_name] =\
                     {'type': '+',
                      'attrs': {'graph part':{'type': 'subgraph', 'value': sub_graph_name}},
@@ -163,6 +158,7 @@ class Parser:
                      'outputs': [],
                      'edges': []
                     }
+
                 graph['subgraphs'][sub_graph_name] = sub_graph
 
                 for iter_ii in all_inputs:
@@ -186,7 +182,7 @@ class Parser:
                 for subgraph in subgraphs:
                     graph['subgraphs'][subgraph] = self.parse_graph(subgraphs[subgraph], subgraph,\
                                                             updage_progress_callback,\
-                                                            max_node_per_graph, render)
+                                                            max_node_per_graph)
 
                 inputs, outputs, output_shapes, output_types = self.get_inputs_outputs(operator)
                 vertice = {'type': self.get_op_type(operator),
@@ -208,68 +204,7 @@ class Parser:
                 if ret is False:
                     return None
 
-        if render:
-            Parser.render(graph)
-
         return graph
-
-    @staticmethod
-    def render(graph):
-        '''collect rendering info'''
-
-        temp_name = str(time.time())
-        dot = Digraph(format='json', name=temp_name)
-        dot.attr('graph')
-        dot.attr('node', shape='box')
-        output_from = {}
-
-        for vertice_name in graph['vertices']:
-            vertice = graph['vertices'][vertice_name]
-            dot.node(vertice_name, vertice['type'])
-            for output in vertice['outputs']:
-                output_from[output] = vertice_name
-
-        edge_labels = []
-        for vertice_name in graph['vertices']:
-            vertice = graph['vertices'][vertice_name]
-            for iter_i in vertice['inputs']:
-                if iter_i in output_from:
-                    dot.edge(output_from[iter_i], vertice_name, str(len(edge_labels)))
-                    edge_labels.append(output_from[iter_i] + '~' + vertice_name)
-
-        output_path = get_temp() + temp_name
-        dot.render(output_path)
-
-        with open(output_path + '.json', 'r') as render_f:
-            jobj = json.load(render_f)
-            graph['size'] = (int(float(jobj['bb'].split(',')[2])),
-                             int(float(jobj['bb'].split(',')[3])))
-
-            vertices = jobj['objects'] if 'objects' in jobj else []
-
-            for vertice in vertices:
-                points = vertice['_draw_'][1]['points']
-                lefttop = points[2]
-                rightbtm = points[0]
-                rect = lefttop + [rightbtm[0]-lefttop[0], rightbtm[1]-lefttop[1]]
-                graph['vertices'][vertice['name']]['rect'] = to_int(rect)
-                label = vertice['_ldraw_'][-1]['pt']
-                label[0] -= vertice['_ldraw_'][-1]['width']/2
-                graph['vertices'][vertice['name']]['label'] = label
-
-            edges = jobj['edges'] if 'edges' in jobj else []
-
-            for edge in edges:
-                label = edge_labels[int(edge['label'])]
-                graph['edges'][label] =\
-                    {'spline': [to_int(point) for point in edge['_draw_'][-1]['points']],\
-                     'arrow': [to_int(point) for point in edge['_hdraw_'][-1]['points']]}
-                [input_v, output_v] = label.split('~')
-                graph['vertices'][input_v]['edges'].append(label)
-                graph['vertices'][output_v]['edges'].append(label)
-
-            if 'objects' in jobj:
-                graph['selected'] = jobj['objects'][-1]['name']
 
 
 class OnnxParser(Parser):
@@ -651,8 +586,9 @@ class TorchParser(Parser):
         return 'pytorch'
 
 
-def parse(model_path, init_progress_callback, updage_progress_callback, render=False):
+def parse(model_path, init_progress_callback, updage_progress_callback):
     '''parse model from file and return graph'''
+
     suffix = Path(model_path).suffix
     if suffix == '.onnx':
         parser = OnnxParser()
@@ -666,4 +602,4 @@ def parse(model_path, init_progress_callback, updage_progress_callback, render=F
         parser = TorchParser()
     else:
         raise UnknownFormatError('Unkown model format!')
-    return parser.parse(model_path, init_progress_callback, updage_progress_callback, render=render)
+    return parser.parse(model_path, init_progress_callback, updage_progress_callback)
