@@ -124,13 +124,7 @@ class ChildFrame(wx.MDIChildFrame):
         self.Maximize()
         self.Show(True)
         canvas_size = self.canvas.GetSize()
-        self.x_units = canvas_size[0]/2
-        self.y_units = canvas_size[1]/2
-        '''
-        x_steps = math.ceil(float(self.graph['size'][0])/self.x_units)
-        y_steps = math.ceil(float(self.graph['size'][1])/self.y_units)
-        self.canvas.SetScrollbars(self.x_units, self.y_units, x_steps, y_steps, 0, 0, True)
-        '''
+        self.x_units, self.y_units = math.ceil(canvas_size[0]/2), math.ceil(canvas_size[1]/2)
         self.GetParent().add_history([self.GetId(), self.graph['name'], self.graph['selected']])
 
     def get_dict(self, graph, dictionary):
@@ -158,15 +152,15 @@ class ChildFrame(wx.MDIChildFrame):
 
     def cacl_thumb_size(self):
         '''calculate size of thumbnail'''
-        canvas_size = self.graph['size']
-        target_size = (math.ceil(float(canvas_size[0])/self.thumb_ratio),
-                       math.ceil(float(canvas_size[1])/self.thumb_ratio))
+        graph_size = self.graph['size']
+        target_size = (math.ceil(float(graph_size[0])/self.thumb_ratio),
+                       math.ceil(float(graph_size[1])/self.thumb_ratio))
 
         if target_size[0] <= self.thumb_max_len and target_size[1] <= self.thumb_max_len:
             return target_size
 
         width, height = target_size[0], target_size[1]
-        width_height_ratio = float(canvas_size[0]) / canvas_size[1]
+        width_height_ratio = float(graph_size[0]) / graph_size[1]
         if width > self.thumb_max_len:
             width = self.thumb_max_len
             height = width / width_height_ratio
@@ -175,7 +169,7 @@ class ChildFrame(wx.MDIChildFrame):
             height = self.thumb_max_len
             width = height * width_height_ratio
 
-        self.thumb_ratio = math.ceil(float(canvas_size[0])/width)
+        self.thumb_ratio = math.ceil(float(graph_size[0])/width)
         return (math.ceil(width), math.ceil(height))
 
     def get_canvas_view(self):
@@ -208,8 +202,8 @@ class ChildFrame(wx.MDIChildFrame):
         target_rect = self.get_canvas_view()
         thumb_rect = (math.floor(float(target_rect[0])/self.thumb_ratio),
                       math.floor(float(target_rect[1])/self.thumb_ratio),
-                      math.ceil(float(target_rect[2])/self.thumb_ratio),
-                      math.ceil(float(target_rect[3])/self.thumb_ratio))
+                      math.floor(float(target_rect[2])/self.thumb_ratio),
+                      math.floor(float(target_rect[3])/self.thumb_ratio))
         dc.SetPen(wx.Pen('red', 1))
         dc.SetBrush(wx.Brush('red', wx.BRUSHSTYLE_TRANSPARENT))
         dc.DrawRectangle(thumb_rect)
@@ -358,7 +352,7 @@ class ChildFrame(wx.MDIChildFrame):
 
     def on_paint(self, _):
         '''paint main view'''
-        canvas_size = self.canvas.GetSize()
+
         dc = wx.PaintDC(self.canvas)
         dc.SetBackground(wx.Brush(self.background_color))
         self.dc = dc
@@ -369,16 +363,17 @@ class ChildFrame(wx.MDIChildFrame):
         font = wx.Font(10, wx.FONTFAMILY_ROMAN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, False)
         dc.SetFont(font)
         self.canvas.PrepareDC(dc)
+        canvas_size = self.canvas.GetSize()
 
         if not self.graph['rendered']:
             render(dc, self.graph)
+            self.x_units, self.y_units = math.ceil(canvas_size[0]/2), math.ceil(canvas_size[1]/2)
             x_steps = math.ceil(float(self.graph['size'][0])/self.x_units)
             y_steps = math.ceil(float(self.graph['size'][1])/self.y_units)
             self.canvas.SetScrollbars(self.x_units, self.y_units, x_steps, y_steps, 0, 0, True)
 
         graph_size = self.graph['size']
-
-        if canvas_size[0] < graph_size[0] and canvas_size[1] < graph_size[1]:
+        if canvas_size[0] < graph_size[0] or canvas_size[1] < graph_size[1]:
             self.thumbnail.SetPosition((0, 0))
             self.thumbnail.SetSize(self.cacl_thumb_size())
             self.thumbnail.SetBackgroundColour(self.foreground_color)
@@ -388,19 +383,28 @@ class ChildFrame(wx.MDIChildFrame):
         view = self.get_canvas_view()
         for edge in self.graph['edges']:
             spline = self.graph['edges'][edge]['spline']
+            dc.DrawSpline(spline)
+            dc.DrawPolygon(self.graph['edges'][edge]['arrow'])
+            '''
             if ChildFrame.include(view, spline[0]) or ChildFrame.include(view, spline[-1]):
                 dc.DrawSpline(spline)
                 dc.DrawPolygon(self.graph['edges'][edge]['arrow'])
+            '''
 
         for vertice in self.graph['vertices']:
             vertice_rect = self.graph['vertices'][vertice]['rect']
             corners = ChildFrame.corners(vertice_rect)
+            dc.DrawRoundedRectangle(self.graph['vertices'][vertice]['rect'], 3)
+            dc.DrawText(self.graph['vertices'][vertice]['type'],
+                        to_int(self.graph['vertices'][vertice]['label']))
+            '''
             for corner in corners:
                 if ChildFrame.include(view, corner):
                     dc.DrawRoundedRectangle(self.graph['vertices'][vertice]['rect'], 3)
                     dc.DrawText(self.graph['vertices'][vertice]['type'],
                                 to_int(self.graph['vertices'][vertice]['label']))
                     break
+            '''
 
         if self.graph['selected'] in self.graph['vertices']:
             vertice = self.graph['vertices'][self.graph['selected']]

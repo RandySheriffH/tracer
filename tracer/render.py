@@ -100,7 +100,7 @@ def render(dc, graph):
                                       dc.GetTextExtent(graph['vertices'][vertice]['type'])[1] +\
                                       style['inner_padding'][1] * 2
 
-    offset_per_level = [0 for v in topology]
+    offset_per_level = [0 for _ in width_per_level]
     max_width = max(width_per_level.values())
 
     for vertice in topology:
@@ -275,11 +275,12 @@ def render(dc, graph):
 
     if directions[graph['direction']] in ['topdown', 'bottomup']:
         graph['size'] = (max_width,
-                         (len(offset_per_level) + 1) * 2 * style['outter_padding'][1] + 
-                          len(offset_per_level) * rect_height)
+                         len(offset_per_level) * 2 * style['outter_padding'][1] +
+                         len(offset_per_level) * rect_height)
     else:
-        graph['size'] = ((len(offset_per_level) + 1) * 2 * style['outter_padding'][0] + 
+        graph['size'] = (len(offset_per_level) * 2 * style['outter_padding'][0] + 
                          len(offset_per_level) * max_rect_width, max_width)
+
     graph['selected'] = list(graph['vertices'].keys())[0]
     graph['rendered'] = True
 
