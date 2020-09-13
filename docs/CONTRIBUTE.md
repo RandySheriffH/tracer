@@ -1,5 +1,5 @@
 # Contribute
-For new format, just subclass [Parser](https://github.com/RandySheriffH/tracer/blob/master/tracer/parsers.py#L14) and override methods:
+For new format, just subclass [Parser](https://github.com/RandySheriffH/tracer/blob/master/tracer/parsers.py#L13) and override methods:
 
 - get_ops
 - get_inputs_outputs
@@ -9,4 +9,4 @@ For new format, just subclass [Parser](https://github.com/RandySheriffH/tracer/b
 - load_graph
 - get_type
 
-Then add entry under [parse](https://github.com/RandySheriffH/tracer/blob/master/tracer/parsers.py#L590).
+Then add entry under [parse](https://github.com/RandySheriffH/tracer/blob/master/tracer/parsers.py#L694).
