@@ -1,5 +1,4 @@
 wxpython
-graphviz
 setuptools
 wheel
 numpy
