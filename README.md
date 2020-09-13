@@ -2,14 +2,12 @@
 Tracer is a desktop app to render deep learning models:
 
 - keep browsing history for easy trace back
-- support viewing of embedded graphs 
-- [show large graph by layers](https://github.com/RandySheriffH/tracer/blob/master/docs/LAYERED.md)
+- support viewing of embedded graphs
 - track upstream and downstream
 - search node by keyword
 
 ## Install
 
-- install latest [graphviz](http://graphviz.org) and add its bin to PATH
 - git clone the tracer project
 - pip install -r requirements.txt
 - pip install onnx if need to view onnx models
