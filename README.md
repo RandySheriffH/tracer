@@ -5,6 +5,7 @@ Tracer is a desktop app to render deep learning models:
 - support viewing of embedded graphs
 - track upstream and downstream
 - search node by keyword
+- support onnx, tensorflow, keras and pytorch models
 
 ## Install
 
