@@ -196,8 +196,9 @@ class ChildFrame(wx.MDIChildFrame):
         self.thumb_dc = dc
         points = []
         for v in self.graph['vertices']:
-            rect = self.graph['vertices'][v]['rect']
-            points.append((int(rect[0]/self.thumb_ratio), int(rect[1]/self.thumb_ratio)))
+            if 'rect' in self.graph['vertices'][v]:
+                rect = self.graph['vertices'][v]['rect']
+                points.append((int(rect[0]/self.thumb_ratio), int(rect[1]/self.thumb_ratio)))
         dc.DrawPointList(points, wx.Pen(self.background_color, 20))
         target_rect = self.get_canvas_view()
         thumb_rect = (math.floor(float(target_rect[0])/self.thumb_ratio),
@@ -381,30 +382,36 @@ class ChildFrame(wx.MDIChildFrame):
             self.thumbnail.Show(False)
 
         view = self.get_canvas_view()
-        for edge in self.graph['edges']:
-            spline = self.graph['edges'][edge]['spline']
-            dc.DrawSpline(spline)
-            dc.DrawPolygon(self.graph['edges'][edge]['arrow'])
-            '''
-            if ChildFrame.include(view, spline[0]) or ChildFrame.include(view, spline[-1]):
+        if len(self.graph['vertices']) > 5000:
+            '''if there are too many, draw only a few'''
+            for edge in self.graph['edges']:
+                spline = self.graph['edges'][edge]['spline']
+                if ChildFrame.include(view, spline[0]) or ChildFrame.include(view, spline[-1]):
+                    dc.DrawSpline(spline)
+                    dc.DrawPolygon(self.graph['edges'][edge]['arrow'])
+
+            for vertice in self.graph['vertices']:
+                vertice_rect = self.graph['vertices'][vertice]['rect']
+                corners = ChildFrame.corners(vertice_rect)
+
+                for corner in corners:
+                    if ChildFrame.include(view, corner):
+                        dc.DrawRoundedRectangle(self.graph['vertices'][vertice]['rect'], 3)
+                        dc.DrawText(self.graph['vertices'][vertice]['type'],
+                                    to_int(self.graph['vertices'][vertice]['label']))
+                        break
+        else:
+            for edge in self.graph['edges']:
+                spline = self.graph['edges'][edge]['spline']
                 dc.DrawSpline(spline)
                 dc.DrawPolygon(self.graph['edges'][edge]['arrow'])
-            '''
 
-        for vertice in self.graph['vertices']:
-            vertice_rect = self.graph['vertices'][vertice]['rect']
-            corners = ChildFrame.corners(vertice_rect)
-            dc.DrawRoundedRectangle(self.graph['vertices'][vertice]['rect'], 3)
-            dc.DrawText(self.graph['vertices'][vertice]['type'],
-                        to_int(self.graph['vertices'][vertice]['label']))
-            '''
-            for corner in corners:
-                if ChildFrame.include(view, corner):
-                    dc.DrawRoundedRectangle(self.graph['vertices'][vertice]['rect'], 3)
-                    dc.DrawText(self.graph['vertices'][vertice]['type'],
-                                to_int(self.graph['vertices'][vertice]['label']))
-                    break
-            '''
+            for vertice in self.graph['vertices']:
+                vertice_rect = self.graph['vertices'][vertice]['rect']
+                corners = ChildFrame.corners(vertice_rect)
+                dc.DrawRoundedRectangle(self.graph['vertices'][vertice]['rect'], 3)
+                dc.DrawText(self.graph['vertices'][vertice]['type'],
+                            to_int(self.graph['vertices'][vertice]['label']))
 
         if self.graph['selected'] in self.graph['vertices']:
             vertice = self.graph['vertices'][self.graph['selected']]

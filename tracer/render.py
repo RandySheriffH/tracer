@@ -12,9 +12,9 @@ style = {
     'edge_padding': 10,
     'point_space': 5,
     'arrow_length': 8,
-    'arrow_width': 3
+    'arrow_width': 3,
+    'max_vertices_per_level': 100
     }
-
 
 def render(dc, graph):
 
@@ -39,40 +39,96 @@ def render(dc, graph):
                     topology[vertice]['inputs'].add(edge_map[input_])
                     topology[edge_map[input_]]['outputs'].add(vertice)
 
-        def DFS(vertice, visited, level):
+        def fill_min_level():
 
-            if vertice not in visited or level > topology[vertice]['level']:
-                topology[vertice]['level'] = max(level, topology[vertice]['level'])
-                visited.add(vertice)
+            def DFS(vertice):
+                print ('DFS on', vertice)
+                visited = set([vertice])
+                queue = [vertice]
+                while queue:
+                    vertice = queue[0]
+                    del queue[0]
+                    next_level = topology[vertice]['level'] + 1
+                    for downstream in topology[vertice]['outputs']:
+                        if downstream in visited:
+                            continue
+                        if next_level > topology[downstream]['level']:
+                            topology[downstream]['level'] = next_level
+                            queue.append(downstream)
+                            visited.add(downstream)
+                            print (downstream, 'enqueued')
 
+            while True:
+                need_continue = False
+                for vertice in topology:
+                    min_downstream_level = min([topology[vertice]['level'] + 1] +\
+                                               [topology[downstream]['level'] for downstream in topology[vertice]['outputs']])
+                    if min_downstream_level <= topology[vertice]['level']:
+                        need_continue = True
+                        DFS(vertice)
+                        break
+                if not need_continue:
+                    break
+
+
+        def fill_level():
+            stack = []
+            visited = set()
+            for vertice in topology:
+                if not topology[vertice]['inputs']:
+                    stack.append(vertice)
+                    visited.add(vertice)
+            while stack:
+                vertice = stack[-1]
+                level = topology[vertice]['level'] + 1
+                del stack[-1]
                 for downstream in topology[vertice]['outputs']:
-                    DFS(downstream, visited, level + 1)
+                    if downstream in visited:
+                        continue
+                    topology[downstream]['level'] = max(topology[downstream]['level'], level)
+                    stack.append(downstream)
+                    visited.add(downstream)
 
-        for vertice in topology:
-            if len(topology[vertice]['inputs']) == 0:
-                DFS(vertice, set(), 0)
+            stack = []
+            visited = set()
+            for vertice in topology:
+                if not topology[vertice]['outputs']:
+                    stack.append(vertice)
+                    visited.add(vertice)
+            while stack:
+                vertice = stack[-1]
+                all_outputs_visited = True
+                for output in topology[vertice]['outputs']:
+                    if output not in visited:
+                        stack.append(output)
+                        visited.add(output)
+                        all_outputs_visited = False
+                if all_outputs_visited:
+                    if topology[vertice]['outputs']:
+                        min_level = min([topology[output]['level'] for output in topology[vertice]['outputs']]) - 1
+                        topology[vertice]['level'] = max(min_level, topology[vertice]['level'])
+                    del stack[-1]
 
-        def DFS2(vertice, visited):
+        fill_level()
 
-            if vertice in visited:
-                return topology[vertice]['level']
+        def roll_level():
+            L = {}
+            for vertice in topology:
+                level = topology[vertice]['level']
+                if level not in L:
+                    L[level] = []
+                L[level].append(vertice)
+            current_level = 0
+            for level in sorted(L.keys()):
+                offset = 0
+                while offset < len(L[level]):
+                    to = min(offset + style['max_vertices_per_level'], len(L[level]))
+                    for ii in range(offset, to):
+                        topology[L[level][ii]]['level'] = current_level
+                    offset = to
+                    current_level += 1
 
-            levels = []
-            visited.add(vertice)
-
-            for downstream in topology[vertice]['outputs']:
-                levels.append(max(0, DFS2(downstream, visited) - 1))
-            topology[vertice]['level'] = min(levels) if levels else topology[vertice]['level']
-
-            return topology[vertice]['level']
-
-        visited = set()
-
-        for vertice in topology:
-
-            if vertice not in visited:
-                DFS2(vertice, visited)
-
+        roll_level()
         return topology, edge_map
 
     topology, edge_map = get_topology()
@@ -100,7 +156,7 @@ def render(dc, graph):
                                       dc.GetTextExtent(graph['vertices'][vertice]['type'])[1] +\
                                       style['inner_padding'][1] * 2
 
-    offset_per_level = [0 for _ in width_per_level]
+    offset_per_level = [0] * (1 + max(list(width_per_level.keys())))
     max_width = max(width_per_level.values())
 
     for vertice in topology:
@@ -115,8 +171,10 @@ def render(dc, graph):
         offset_per_level[level] += 1
 
     max_rect_width = max([dc.GetTextExtent(graph['vertices'][vertice]['type'])[0] for vertice in topology])
-    in_ports = {}
-    out_ports = {}
+    top_ports = {}
+    btm_ports = {}
+    lft_ports = {}
+    rit_ports = {}
     interval_per_level = [[] for v in topology]
     rect_height = 2 * style['inner_padding'][1] + dc.GetTextExtent('A')[1]
 
@@ -129,109 +187,131 @@ def render(dc, graph):
             level = topology[vertice]['level']
             rect_y = rect_height * level + style['outter_padding'][1] * 2 * (level + 1)
             rect_x = topology[vertice]['offset']
-            in_ports[vertice] = [rect_x + int(rect_width/2), rect_y]
-            out_ports[vertice] = [rect_x + int(rect_width/2), rect_y + rect_height]
             interval_per_level[level].append((rect_x, rect_x + rect_width))
 
         elif directions[graph['direction']] == 'bottomup':
             level = max(vertices_per_level.keys()) - topology[vertice]['level']
             rect_y = rect_height * level + style['outter_padding'][1] * 2 * (level + 1)
             rect_x = topology[vertice]['offset']
-            out_ports[vertice] = [rect_x + int(rect_width/2), rect_y]
-            in_ports[vertice] = [rect_x + int(rect_width/2), rect_y + rect_height]
             interval_per_level[topology[vertice]['level']].append((rect_x, rect_x + rect_width))
 
         elif directions[graph['direction']] == 'toright':
             level = topology[vertice]['level']
             rect_y = topology[vertice]['offset']
             rect_x = max_rect_width * level + style['outter_padding'][0] * 2 * (level + 1)
-            in_ports[vertice] = [rect_x, rect_y + rect_height/2]
-            out_ports[vertice] = [rect_x + rect_width, rect_y + rect_height/2]
             interval_per_level[level].append((rect_y, rect_y + rect_height))
 
         else:
             level = max(vertices_per_level.keys()) - topology[vertice]['level']
             rect_y = topology[vertice]['offset']
             rect_x = max_rect_width * level + style['outter_padding'][0] * 2 * (level + 1)
-            out_ports[vertice] = [rect_x, rect_y + rect_height/2]
-            in_ports[vertice] = [rect_x + rect_width, rect_y + rect_height/2]
             interval_per_level[topology[vertice]['level']].append((rect_y, rect_y + rect_height))
+
+        top_ports[vertice] = [rect_x + int(rect_width/2), rect_y]
+        btm_ports[vertice] = [rect_x + int(rect_width/2), rect_y + rect_height]
+        lft_ports[vertice] = [rect_x, rect_y + int(rect_height/2)]
+        rit_ports[vertice] = [rect_x + rect_width, rect_y + int(rect_height/2)]
 
         graph['vertices'][vertice]['rect'] = [rect_x, rect_y, rect_width, rect_height]
         graph['vertices'][vertice]['label'] = [rect_x + style['inner_padding'][0],
                                                rect_y + style['inner_padding'][1]]
-        graph['vertices'][vertice]['inport'] = in_ports[vertice]
-        graph['vertices'][vertice]['outport'] = out_ports[vertice]
 
-    for vertice in graph['vertices']:
-        graph['vertices'][vertice]['edges'] = set()
-        from_level = topology[vertice]['level']
-        from_point = out_ports[vertice]
-        for to_vertice in topology[vertice]['outputs']:
-            to_level = topology[to_vertice]['level']
-            to_point = in_ports[to_vertice]
-            edge = vertice + '>' + to_vertice
-            if from_level + 1 == to_level:
-                if directions[graph['direction']] in ['topdown', 'bottomup']:
-                    mid_point = [to_point[0], int((from_point[1] + to_point[1]))/2]
+    for from_vertice in graph['vertices']:
+        from_rect = graph['vertices'][from_vertice]['rect']
+
+        for to_vertice in topology[from_vertice]['outputs']:
+            to_rect = graph['vertices'][to_vertice]['rect']
+            edge = from_vertice + '>' + to_vertice
+            points = []
+
+            if directions[graph['direction']] == 'topdown':
+                if from_rect[1] < to_rect[1]:
+                    points.append(btm_ports[from_vertice])
+                    points.append([top_ports[to_vertice][0],
+                                   btm_ports[from_vertice][1] + style['outter_padding'][1]])
+                    points.append(top_ports[to_vertice])
+                elif from_rect[1] > to_rect[1]:
+                    points.append(top_ports[from_vertice])
+                    points.append([btm_ports[to_vertice][0],
+                                   top_ports[from_vertice][1] - style['outter_padding'][1]])
+                    points.append(btm_ports[to_vertice])
                 else:
-                    mid_point = [int((from_point[0] + to_point[0]))/2, to_point[1]]
-                graph['edges'][edge] = {'spline': [out_ports[vertice], mid_point, in_ports[to_vertice]]}
+                    if from_rect[0] < to_rect[0]:
+                        points.append(rit_ports[from_vertice])
+                        points.append([int((rit_ports[from_vertice][0] + lft_ports[to_vertice][0])/2),
+                                      rit_ports[from_vertice][1]])
+                        points.append(lft_ports[to_vertice])
+                    else:
+                        points.append(lft_ports[from_vertice])
+                        points.append([int((lft_ports[from_vertice][0] + rit_ports[to_vertice][0])/2),
+                                      lft_ports[from_vertice][1]])
+                        points.append(rit_ports[to_vertice])
+
+            elif directions[graph['direction']] == 'bottomup':
+                if from_rect[1] > to_rect[1]:
+                    points.append(top_ports[from_vertice])
+                    points.append([btm_ports[to_vertice][0],
+                                   top_ports[from_vertice][1] - style['outter_padding'][1]])
+                    points.append(btm_ports[to_vertice])
+                elif from_rect[1] < to_rect[1]:
+                    points.append(btm_ports[from_vertice])
+                    points.append([top_ports[to_vertice][0],
+                                   btm_ports[from_vertice][1] + style['outter_padding'][1]])
+                    points.append(top_ports[to_vertice])
+                else:
+                    if from_rect[0] < to_rect[0]:
+                        points.append(rit_ports[from_vertice])
+                        points.append([int((rit_ports[from_vertice][0] + lft_ports[to_vertice][0])/2),
+                                      rit_ports[from_vertice][1]])
+                        points.append(lft_ports[to_vertice])
+                    else:
+                        points.append(lft_ports[from_vertice])
+                        points.append([int((lft_ports[from_vertice][0] + rit_ports[to_vertice][0])/2),
+                                      lft_ports[from_vertice][1]])
+                        points.append(rit_ports[to_vertice])
+
+            elif directions[graph['direction']] == 'toright':
+                if from_rect[0] < to_rect[0]:
+                    points.append(rit_ports[from_vertice])
+                    points.append([rit_ports[from_vertice][0] + style['outter_padding'][0],
+                                   lft_ports[to_vertice][1]])
+                    points.append(lft_ports[to_vertice])
+                elif from_rect[0] > to_rect[0]:
+                    points.append(lft_ports[from_vertice])
+                    points.append([lft_ports[from_vertice][0] + style['outter_padding'][0],
+                                   rit_ports[to_vertice][1]])
+                    points.append(rit_ports[to_vertice])
+                else:
+                    if from_rect[1] < to_rect[1]:
+                        points.append(btm_ports[from_vertice])
+                        points.append([btm_ports[from_vertice][0], int((btm_ports[from_vertice][1] + top_ports[to_vertice][1])/2)])
+                        points.append(top_ports[to_vertice])
+                    else:
+                        points.append(top_ports[from_vertice])
+                        points.append([top_ports[from_vertice][0], int((top_ports[from_vertice][1] + btm_ports[to_vertice][1])/2)])
+                        points.append(btm_ports[to_vertice])
+
             else:
-                if directions[graph['direction']] in ['topdown', 'bottomup']:
-                    to_left = 1 if to_point[0] >= from_point[0] else -1
-                    step = style['edge_padding'] 
-                    tentative_xs = [from_point[0] + to_left * d_iter * step for d_iter in range(10)]
-                    for tentative_x in tentative_xs:
-                        if tentative_x < 0:
-                            continue
-                        overlap = False
-                        for level_iter in range(from_level+1, to_level):
-                            for interval in interval_per_level[level_iter]:
-                                if tentative_x >= interval[0] and tentative_x <= interval[1]:
-                                    overlap = True
-                                    break
-                            if overlap:
-                                break
-                        if not overlap:
-                            if directions[graph['direction']] == 'topdown':
-                                mid_point_0 = [tentative_x, from_point[1] + style['outter_padding'][1]]
-                                mid_point_1 = [tentative_x, to_point[1] - style['outter_padding'][1]]
-                            else:
-                                mid_point_0 = [tentative_x, from_point[1] - style['outter_padding'][1]]
-                                mid_point_1 = [tentative_x, to_point[1] + style['outter_padding'][1]]
-                            graph['edges'][edge] = {'spline': [out_ports[vertice],
-                                                               mid_point_0,
-                                                               mid_point_1,
-                                                               in_ports[to_vertice]]}
-                            break
+                if from_rect[0] < to_rect[0]:
+                    points.append(rit_ports[from_vertice])
+                    points.append([rit_ports[from_vertice][0] + style['outter_padding'][0], lft_ports[to_vertice][1]])
+                    points.append(lft_ports[to_vertice])
+                elif from_rect[0] > to_rect[0]:
+                    points.append(lft_ports[from_vertice])
+                    points.append([lft_ports[from_vertice][0] - style['outter_padding'][0], rit_ports[to_vertice][1]])
+                    points.append(rit_ports[to_vertice])
                 else:
-                    to_down = 1 if to_point[1] >= from_point[1] else -1
-                    step = style['edge_padding'] 
-                    tentative_ys = [from_point[1] + to_down * d_iter * step for d_iter in range(10)]
-                    for tentative_y in tentative_ys:
-                        if tentative_y < 0:
-                            continue
-                        overlap = False
-                        for level_iter in range(from_level+1, to_level):
-                            for interval in interval_per_level[level_iter]:
-                                if tentative_y >= interval[0] and tentative_y <= interval[1]:
-                                    overlap = True
-                                    break
-                            if overlap:
-                                break
-                        if not overlap:
-                            if directions[graph['direction']] == 'toright':
-                                mid_point_0 = [from_point[0] + style['outter_padding'][0], tentative_y]
-                                mid_point_1 = [to_point[0] - style['outter_padding'][0], tentative_y]
-                            else:
-                                mid_point_0 = [from_point[0] - style['outter_padding'][0], tentative_y]
-                                mid_point_1 = [to_point[0] + style['outter_padding'][0], tentative_y]
-                            graph['edges'][edge] = {'spline': [out_ports[vertice],
-                                                               mid_point_0,
-                                                               mid_point_1,
-                                                               in_ports[to_vertice]]}
-                            break
+                    if from_rect[1] < to_rect[1]:
+                        points.append(btm_ports[from_vertice])
+                        points.append([btm_ports[from_vertice][0], int((btm_ports[from_vertice][1] + top_ports[to_vertice][1])/2)])
+                        points.append(top_ports[to_vertice])
+                    else:
+                        points.append(top_ports[from_vertice])
+                        points.append([top_ports[from_vertice][0], int((top_ports[from_vertice][1] + btm_ports[to_vertice][1])/2)])
+                        points.append(btm_ports[to_vertice])
+
+            graph['edges'][edge] = {'spline': points}
+
 
     for edge in graph['edges']:
         from_vertice, to_vertice = edge.split('>')

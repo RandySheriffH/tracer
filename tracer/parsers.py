@@ -76,7 +76,7 @@ class Parser:
     def parse(self, model_path,
               init_progress_callback,
               updage_progress_callback,
-              max_node_per_graph=600):
+              max_node_per_graph=300):
         '''parse graph and return parsed'''
 
         model_graph, total_ops = self.load_graph(model_path)
@@ -108,9 +108,10 @@ class Parser:
         ops = self.get_ops(model_graph)
         num_ops = len(ops)
 
-        if num_ops > max_node_per_graph:
+        if False: #num_ops > max_node_per_graph:
             all_inputs = {}
             all_outputs = {}
+            all_edges = set()
 
             for iter_i in range(0, num_ops, max_node_per_graph):
                 sub_graph_name = graph_name + '_vertices_' + str(iter_i/max_node_per_graph + 1)
@@ -166,6 +167,12 @@ class Parser:
                     if iter_ii in all_outputs and all_inputs[iter_ii] != all_outputs[iter_ii]:
 
                         edge_name = all_outputs[iter_ii] + '_to_' + all_inputs[iter_ii]
+                        reversed_edge_name = all_inputs[iter_ii] + '_to_' + all_outputs[iter_ii]
+
+                        if reversed_edge_name in all_edges:
+                            continue
+
+                        all_edges.add(edge_name)
                         from_vertice = graph['vertices'][all_outputs[iter_ii]]
 
                         if edge_name not in from_vertice['outputs']:
@@ -189,7 +196,7 @@ class Parser:
                            'attrs': attrs,
                            'inputs': inputs,
                            'outputs': outputs,
-                           'edges': []}
+                           'edges': set()}
 
                 for iter_ii, output in enumerate(outputs):
                     if output_shapes[iter_ii] is not None:
