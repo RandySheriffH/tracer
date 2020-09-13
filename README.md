@@ -13,6 +13,7 @@ Tracer is a desktop app to render deep learning models:
 - pip install -r requirements.txt
 - pip install onnx if need to view onnx models
 - pip install tf>=2.2.0 if need to view tensorflow or keras models
+- pip install torch if need to view pytorch models
 - run "python setup.py install"
 - open python terminal and run:
 ```
