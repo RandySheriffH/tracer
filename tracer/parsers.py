@@ -1,12 +1,10 @@
 # Licensed under the MIT license.
 '''Parers to read models'''
-#pylint: disable=no-member,import-outside-toplevel,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,protected-access,anomalous-backslash-in-string
+#pylint: disable=no-member,import-outside-toplevel,relative-beyond-top-level,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,protected-access,anomalous-backslash-in-string
 
 import os
-import json
-import time
 from pathlib import Path
-from .utils import get_temp, to_int, UnknownFormatError
+from .utils import UnknownFormatError
 
 
 class Parser:
@@ -106,110 +104,34 @@ class Parser:
         graph['name'] = graph_name
         graph['type'] = self.get_type()
         ops = self.get_ops(model_graph)
-        num_ops = len(ops)
 
-        if False: #num_ops > max_node_per_graph:
-            all_inputs = {}
-            all_outputs = {}
-            all_edges = set()
+        for operator in ops:
+            attrs, subgraphs = self.get_attr(operator)
 
-            for iter_i in range(0, num_ops, max_node_per_graph):
-                sub_graph_name = graph_name + '_vertices_' + str(iter_i/max_node_per_graph + 1)
-                sub_graph = Parser.empty_graph()
-                sub_graph['name'] = sub_graph_name
-                sub_graph['type'] = self.get_type()
+            for subgraph in subgraphs:
+                graph['subgraphs'][subgraph] = self.parse_graph(subgraphs[subgraph], subgraph,\
+                                                        updage_progress_callback,\
+                                                        max_node_per_graph)
 
-                for operator in ops[iter_i: min(iter_i+max_node_per_graph, num_ops)]:
-                    attrs, subgraphs = self.get_attr(operator)
-                    for subgraph in subgraphs:
-                        sub_graph['subgraphs'][subgraph] =\
-                            self.parse_graph(subgraphs[subgraph], subgraph,
-                                             updage_progress_callback,
-                                             max_node_per_graph)
+            inputs, outputs, output_shapes, output_types = self.get_inputs_outputs(operator)
+            vertice = {'type': self.get_op_type(operator),
+                       'attrs': attrs,
+                       'inputs': inputs,
+                       'outputs': outputs,
+                       'edges': set()}
 
-                    inputs, outputs, output_shapes, output_types = self.get_inputs_outputs(operator)
+            for iter_ii, output in enumerate(outputs):
+                if output_shapes[iter_ii] is not None:
+                    graph['shapes'][output] = output_shapes[iter_ii]
+                if output_types[iter_ii] is not None:
+                    graph['types'][output] = output_types[iter_ii]
 
-                    vertice = {'type': self.get_op_type(operator),
-                               'attrs': attrs,
-                               'inputs': inputs,
-                               'outputs': outputs,
-                               'edges': []}
-
-                    for iter_ii, output in enumerate(outputs):
-                        if output_shapes[iter_ii] is not None:
-                            sub_graph['shapes'][output] = output_shapes[iter_ii]
-                        if output_types[iter_ii] is not None:
-                            sub_graph['types'][output] = output_types[iter_ii]
-
-                    op_name = self.get_op_name(operator)
-                    sub_graph['vertices'][op_name] = vertice
-                    for iter_ii in inputs:
-                        all_inputs[iter_ii] = sub_graph_name
-                    for output in outputs:
-                        all_outputs[output] = sub_graph_name
-                    self.count += 1
-                    ret, _ = updage_progress_callback(self.count)
-                    if ret is False:
-                        return None
-
-                graph['vertices'][sub_graph_name] =\
-                    {'type': '+',
-                     'attrs': {'graph part':{'type': 'subgraph', 'value': sub_graph_name}},
-                     'inputs': [],
-                     'outputs': [],
-                     'edges': []
-                    }
-
-                graph['subgraphs'][sub_graph_name] = sub_graph
-
-                for iter_ii in all_inputs:
-
-                    if iter_ii in all_outputs and all_inputs[iter_ii] != all_outputs[iter_ii]:
-
-                        edge_name = all_outputs[iter_ii] + '_to_' + all_inputs[iter_ii]
-                        reversed_edge_name = all_inputs[iter_ii] + '_to_' + all_outputs[iter_ii]
-
-                        if reversed_edge_name in all_edges:
-                            continue
-
-                        all_edges.add(edge_name)
-                        from_vertice = graph['vertices'][all_outputs[iter_ii]]
-
-                        if edge_name not in from_vertice['outputs']:
-                            from_vertice['outputs'].append(edge_name)
-
-                        to_vertice = graph['vertices'][all_inputs[iter_ii]]
-                        if edge_name not in to_vertice['inputs']:
-                            to_vertice['inputs'].append(edge_name)
-
-        else:
-            for iter_i, operator in enumerate(ops):
-                attrs, subgraphs = self.get_attr(operator)
-
-                for subgraph in subgraphs:
-                    graph['subgraphs'][subgraph] = self.parse_graph(subgraphs[subgraph], subgraph,\
-                                                            updage_progress_callback,\
-                                                            max_node_per_graph)
-
-                inputs, outputs, output_shapes, output_types = self.get_inputs_outputs(operator)
-                vertice = {'type': self.get_op_type(operator),
-                           'attrs': attrs,
-                           'inputs': inputs,
-                           'outputs': outputs,
-                           'edges': set()}
-
-                for iter_ii, output in enumerate(outputs):
-                    if output_shapes[iter_ii] is not None:
-                        graph['shapes'][output] = output_shapes[iter_ii]
-                    if output_types[iter_ii] is not None:
-                        graph['types'][output] = output_types[iter_ii]
-
-                op_name = self.get_op_name(operator)
-                graph['vertices'][op_name] = vertice
-                self.count += 1
-                ret, _ = updage_progress_callback(self.count)
-                if ret is False:
-                    return None
+            op_name = self.get_op_name(operator)
+            graph['vertices'][op_name] = vertice
+            self.count += 1
+            ret, _ = updage_progress_callback(self.count)
+            if ret is False:
+                return None
 
         return graph
 

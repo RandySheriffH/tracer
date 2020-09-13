@@ -1,6 +1,6 @@
 # Licensed under the MIT license.
 '''tracer graphic user interface by wx'''
-#pylint: disable=no-member,import-outside-toplevel,too-many-instance-attributes,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,protected-access,no-name-in-module,too-few-public-methods,invalid-name,chained-comparison
+#pylint: disable=no-member,import-outside-toplevel,relative-beyond-top-level,too-many-instance-attributes,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,protected-access,no-name-in-module,too-few-public-methods,invalid-name,chained-comparison
 
 import os
 import sys
@@ -383,7 +383,7 @@ class ChildFrame(wx.MDIChildFrame):
 
         view = self.get_canvas_view()
         if len(self.graph['vertices']) > 5000:
-            '''if there are too many, draw only a few'''
+
             for edge in self.graph['edges']:
                 spline = self.graph['edges'][edge]['spline']
                 if ChildFrame.include(view, spline[0]) or ChildFrame.include(view, spline[-1]):
@@ -444,6 +444,7 @@ class ChildFrame(wx.MDIChildFrame):
                 self.GetParent().show_frame(sg)
 
     def rotate(self):
+        '''rotate rendering layout clockwise'''
         self.graph['direction'] = (self.graph['direction'] + 1) % len(directions)
         self.graph['rendered'] = False
         self.Refresh()

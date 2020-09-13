@@ -13,10 +13,11 @@ style = {
     'point_space': 5,
     'arrow_length': 8,
     'arrow_width': 3,
-    'max_vertices_per_level': 100
+    'max_vertices_per_level': 200
     }
 
-def render(dc, graph):
+def render(device_context, graph):
+    '''render graph on to the device context'''
 
     graph['edges'] = {}
 
@@ -38,38 +39,6 @@ def render(dc, graph):
                 if input_ in edge_map:
                     topology[vertice]['inputs'].add(edge_map[input_])
                     topology[edge_map[input_]]['outputs'].add(vertice)
-
-        def fill_min_level():
-
-            def DFS(vertice):
-                print ('DFS on', vertice)
-                visited = set([vertice])
-                queue = [vertice]
-                while queue:
-                    vertice = queue[0]
-                    del queue[0]
-                    next_level = topology[vertice]['level'] + 1
-                    for downstream in topology[vertice]['outputs']:
-                        if downstream in visited:
-                            continue
-                        if next_level > topology[downstream]['level']:
-                            topology[downstream]['level'] = next_level
-                            queue.append(downstream)
-                            visited.add(downstream)
-                            print (downstream, 'enqueued')
-
-            while True:
-                need_continue = False
-                for vertice in topology:
-                    min_downstream_level = min([topology[vertice]['level'] + 1] +\
-                                               [topology[downstream]['level'] for downstream in topology[vertice]['outputs']])
-                    if min_downstream_level <= topology[vertice]['level']:
-                        need_continue = True
-                        DFS(vertice)
-                        break
-                if not need_continue:
-                    break
-
 
         def fill_level():
             stack = []
@@ -105,33 +74,69 @@ def render(dc, graph):
                         all_outputs_visited = False
                 if all_outputs_visited:
                     if topology[vertice]['outputs']:
-                        min_level = min([topology[output]['level'] for output in topology[vertice]['outputs']]) - 1
+                        min_level = min([topology[output]['level']\
+                            for output in topology[vertice]['outputs']]) - 1
                         topology[vertice]['level'] = max(min_level, topology[vertice]['level'])
                     del stack[-1]
 
         fill_level()
 
+        def lift_vertices():
+
+            for _ in range(1000):
+                vertice_lifted = False
+                for vertice in topology:
+                    if not topology[vertice]['inputs']:
+                        continue
+                    max_upstream_level = max([topology[upstream]['level']\
+                        for upstream in topology[vertice]['inputs']]) + 1
+                    if max_upstream_level < topology[vertice]['level']:
+                        topology[vertice]['level'] = max_upstream_level
+                        vertice_lifted = True
+                if not vertice_lifted:
+                    break
+
+        lift_vertices()
+
+        def lower_vertices():
+
+            for _ in range(1000):
+                vertice_lowered = False
+                for vertice in topology:
+                    if not topology[vertice]['outputs']:
+                        continue
+                    min_downstream_level = min([topology[downstream]['level']\
+                        for downstream in topology[vertice]['outputs']]) - 1
+                    if min_downstream_level > topology[vertice]['level']:
+                        topology[vertice]['level'] = min_downstream_level
+                        vertice_lowered = True
+                if not vertice_lowered:
+                    break
+
+        lower_vertices()
+
         def roll_level():
-            L = {}
+            level_map = {}
             for vertice in topology:
                 level = topology[vertice]['level']
-                if level not in L:
-                    L[level] = []
-                L[level].append(vertice)
+                if level not in level_map:
+                    level_map[level] = []
+                level_map[level].append(vertice)
             current_level = 0
-            for level in sorted(L.keys()):
-                offset = 0
-                while offset < len(L[level]):
-                    to = min(offset + style['max_vertices_per_level'], len(L[level]))
-                    for ii in range(offset, to):
-                        topology[L[level][ii]]['level'] = current_level
-                    offset = to
+            for level in sorted(level_map.keys()):
+                from_offset = 0
+                while from_offset < len(level_map[level]):
+                    to_offset = min(from_offset + style['max_vertices_per_level'],
+                                    len(level_map[level]))
+                    for i_offset in range(from_offset, to_offset):
+                        topology[level_map[level][i_offset]]['level'] = current_level
+                    from_offset = to_offset
                     current_level += 1
 
         roll_level()
         return topology, edge_map
 
-    topology, edge_map = get_topology()
+    topology, _ = get_topology()
     vertices_per_level = {}
     width_per_level = {}
 
@@ -149,12 +154,12 @@ def render(dc, graph):
 
         if directions[graph['direction']] in ['topdown', 'bottomup']:
             width_per_level[level] += style['outter_padding'][0] * 2 +\
-                                      dc.GetTextExtent(graph['vertices'][vertice]['type'])[0] +\
-                                      style['inner_padding'][0] * 2
+                device_context.GetTextExtent(graph['vertices'][vertice]['type'])[0] +\
+                style['inner_padding'][0] * 2
         else:
             width_per_level[level] += style['outter_padding'][1] * 2 +\
-                                      dc.GetTextExtent(graph['vertices'][vertice]['type'])[1] +\
-                                      style['inner_padding'][1] * 2
+                device_context.GetTextExtent(graph['vertices'][vertice]['type'])[1] +\
+                style['inner_padding'][1] * 2
 
     offset_per_level = [0] * (1 + max(list(width_per_level.keys())))
     max_width = max(width_per_level.values())
@@ -164,23 +169,25 @@ def render(dc, graph):
         offset_unit_width = int(max_width/vertices_per_level[level])
         offset_center = offset_unit_width * offset_per_level[level] + int(offset_unit_width/2)
         adjusted_offset = offset_center -\
-                          (int((dc.GetTextExtent(graph['vertices'][vertice]['type'])[0] + style['inner_padding'][0] * 2)/2)\
-                           if directions[graph['direction']] in ['topdown', 'bottomup'] else\
-                           int((dc.GetTextExtent(graph['vertices'][vertice]['type'])[1] + style['inner_padding'][1] * 2)/2))
+            (int((device_context.GetTextExtent(graph['vertices'][vertice]['type'])[0] +\
+                  style['inner_padding'][0] * 2)/2)\
+             if directions[graph['direction']] in ['topdown', 'bottomup'] else\
+             int((device_context.GetTextExtent(graph['vertices'][vertice]['type'])[1] +\
+                  style['inner_padding'][1] * 2)/2))
         topology[vertice]['offset'] = adjusted_offset
         offset_per_level[level] += 1
 
-    max_rect_width = max([dc.GetTextExtent(graph['vertices'][vertice]['type'])[0] for vertice in topology])
+    max_rect_width = max([device_context.GetTextExtent(graph['vertices'][vertice]['type'])[0]\
+                          for vertice in topology])
     top_ports = {}
     btm_ports = {}
     lft_ports = {}
     rit_ports = {}
     interval_per_level = [[] for v in topology]
-    rect_height = 2 * style['inner_padding'][1] + dc.GetTextExtent('A')[1]
+    rect_height = 2 * style['inner_padding'][1] + device_context.GetTextExtent('A')[1]
 
     for vertice in graph['vertices']:
-        text = graph['vertices'][vertice]['type']
-        text_width, _ = dc.GetTextExtent(graph['vertices'][vertice]['type'])
+        text_width, _ = device_context.GetTextExtent(graph['vertices'][vertice]['type'])
         rect_width = text_width + 2 * style['inner_padding'][0]
         rect_x, rect_y = 0, 0
         if directions[graph['direction']] == 'topdown':
@@ -238,13 +245,15 @@ def render(dc, graph):
                 else:
                     if from_rect[0] < to_rect[0]:
                         points.append(rit_ports[from_vertice])
-                        points.append([int((rit_ports[from_vertice][0] + lft_ports[to_vertice][0])/2),
-                                      rit_ports[from_vertice][1]])
+                        points.append([int((rit_ports[from_vertice][0] +\
+                                            lft_ports[to_vertice][0])/2),
+                                       rit_ports[from_vertice][1]])
                         points.append(lft_ports[to_vertice])
                     else:
                         points.append(lft_ports[from_vertice])
-                        points.append([int((lft_ports[from_vertice][0] + rit_ports[to_vertice][0])/2),
-                                      lft_ports[from_vertice][1]])
+                        points.append([int((lft_ports[from_vertice][0] +\
+                                            rit_ports[to_vertice][0])/2),
+                                       lft_ports[from_vertice][1]])
                         points.append(rit_ports[to_vertice])
 
             elif directions[graph['direction']] == 'bottomup':
@@ -261,13 +270,15 @@ def render(dc, graph):
                 else:
                     if from_rect[0] < to_rect[0]:
                         points.append(rit_ports[from_vertice])
-                        points.append([int((rit_ports[from_vertice][0] + lft_ports[to_vertice][0])/2),
-                                      rit_ports[from_vertice][1]])
+                        points.append([int((rit_ports[from_vertice][0] +\
+                                            lft_ports[to_vertice][0])/2),
+                                       rit_ports[from_vertice][1]])
                         points.append(lft_ports[to_vertice])
                     else:
                         points.append(lft_ports[from_vertice])
-                        points.append([int((lft_ports[from_vertice][0] + rit_ports[to_vertice][0])/2),
-                                      lft_ports[from_vertice][1]])
+                        points.append([int((lft_ports[from_vertice][0] +\
+                                            rit_ports[to_vertice][0])/2),
+                                       lft_ports[from_vertice][1]])
                         points.append(rit_ports[to_vertice])
 
             elif directions[graph['direction']] == 'toright':
@@ -278,36 +289,46 @@ def render(dc, graph):
                     points.append(lft_ports[to_vertice])
                 elif from_rect[0] > to_rect[0]:
                     points.append(lft_ports[from_vertice])
-                    points.append([lft_ports[from_vertice][0] + style['outter_padding'][0],
+                    points.append([lft_ports[from_vertice][0] - style['outter_padding'][0],
                                    rit_ports[to_vertice][1]])
                     points.append(rit_ports[to_vertice])
                 else:
                     if from_rect[1] < to_rect[1]:
                         points.append(btm_ports[from_vertice])
-                        points.append([btm_ports[from_vertice][0], int((btm_ports[from_vertice][1] + top_ports[to_vertice][1])/2)])
+                        points.append([btm_ports[from_vertice][0],
+                                       int((btm_ports[from_vertice][1] +\
+                                            top_ports[to_vertice][1])/2)])
                         points.append(top_ports[to_vertice])
                     else:
                         points.append(top_ports[from_vertice])
-                        points.append([top_ports[from_vertice][0], int((top_ports[from_vertice][1] + btm_ports[to_vertice][1])/2)])
+                        points.append([top_ports[from_vertice][0],
+                                       int((top_ports[from_vertice][1] +\
+                                            btm_ports[to_vertice][1])/2)])
                         points.append(btm_ports[to_vertice])
 
             else:
                 if from_rect[0] < to_rect[0]:
                     points.append(rit_ports[from_vertice])
-                    points.append([rit_ports[from_vertice][0] + style['outter_padding'][0], lft_ports[to_vertice][1]])
+                    points.append([rit_ports[from_vertice][0] + style['outter_padding'][0],
+                                   lft_ports[to_vertice][1]])
                     points.append(lft_ports[to_vertice])
                 elif from_rect[0] > to_rect[0]:
                     points.append(lft_ports[from_vertice])
-                    points.append([lft_ports[from_vertice][0] - style['outter_padding'][0], rit_ports[to_vertice][1]])
+                    points.append([lft_ports[from_vertice][0] - style['outter_padding'][0],
+                                   rit_ports[to_vertice][1]])
                     points.append(rit_ports[to_vertice])
                 else:
                     if from_rect[1] < to_rect[1]:
                         points.append(btm_ports[from_vertice])
-                        points.append([btm_ports[from_vertice][0], int((btm_ports[from_vertice][1] + top_ports[to_vertice][1])/2)])
+                        points.append([btm_ports[from_vertice][0],
+                                       int((btm_ports[from_vertice][1] +\
+                                            top_ports[to_vertice][1])/2)])
                         points.append(top_ports[to_vertice])
                     else:
                         points.append(top_ports[from_vertice])
-                        points.append([top_ports[from_vertice][0], int((top_ports[from_vertice][1] + btm_ports[to_vertice][1])/2)])
+                        points.append([top_ports[from_vertice][0],
+                                       int((top_ports[from_vertice][1] +\
+                                            btm_ports[to_vertice][1])/2)])
                         points.append(btm_ports[to_vertice])
 
             graph['edges'][edge] = {'spline': points}
@@ -319,7 +340,6 @@ def render(dc, graph):
         graph['vertices'][to_vertice]['edges'].add(edge)
         mid_point, end_point = graph['edges'][edge]['spline'][-2:]
         if end_point[0] != mid_point[0]:
-            k = (end_point[1] - mid_point[1]) / (end_point[0] - mid_point[0])
             edge_x = abs(end_point[0] - mid_point[0])
             edge_y = abs(end_point[1] - mid_point[1])
             edge_z = math.sqrt(edge_x * edge_x + edge_y * edge_y)
@@ -344,7 +364,8 @@ def render(dc, graph):
                 graph['edges'][edge]['arrow_right'][1] = arrow_y + edge_axis_y
 
         else:
-            edge_y = end_point[1] - style['arrow_length'] if mid_point[1] < end_point[1] else end_point[1] + style['arrow_length']
+            edge_y = end_point[1] - style['arrow_length'] if mid_point[1] < end_point[1]\
+                     else end_point[1] + style['arrow_length']
             graph['edges'][edge]['arrow_center'] = [end_point[0], edge_y]
             graph['edges'][edge]['arrow_left'] = [end_point[0] - style['arrow_width'], edge_y]
             graph['edges'][edge]['arrow_right'] = [end_point[0] + style['arrow_width'], edge_y]
@@ -358,11 +379,8 @@ def render(dc, graph):
                          len(offset_per_level) * 2 * style['outter_padding'][1] +
                          len(offset_per_level) * rect_height)
     else:
-        graph['size'] = (len(offset_per_level) * 2 * style['outter_padding'][0] + 
+        graph['size'] = (len(offset_per_level) * 2 * style['outter_padding'][0] +
                          len(offset_per_level) * max_rect_width, max_width)
 
     graph['selected'] = list(graph['vertices'].keys())[0]
     graph['rendered'] = True
-
-
-
