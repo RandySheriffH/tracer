@@ -1,6 +1,6 @@
 # Licensed under the MIT license.
 '''tracer graphic user interface by wx'''
-#pylint: disable=no-member,import-outside-toplevel,relative-beyond-top-level,too-many-instance-attributes,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,protected-access,no-name-in-module,too-few-public-methods,invalid-name,chained-comparison
+#pylint: disable=no-member,import-outside-toplevel,relative-beyond-top-level,too-many-instance-attributes,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,protected-access,no-name-in-module,too-few-public-methods,invalid-name,chained-comparison,line-too-long
 
 import os
 import sys
@@ -9,7 +9,7 @@ import wx
 from wx import Point, propgrid
 import graphviz
 from .parsers import parse
-from .render import render, directions
+from .render import render, style, directions
 from .utils import to_int, pwd, create_temp, remove_temp, UnknownFormatError
 
 
@@ -195,11 +195,27 @@ class ChildFrame(wx.MDIChildFrame):
         dc.Clear()
         self.thumb_dc = dc
         points = []
+        input_points = []
+        output_points = []
         for v in self.graph['vertices']:
             if 'rect' in self.graph['vertices'][v]:
                 rect = self.graph['vertices'][v]['rect']
+                if self.graph['vertices'][v]['is_input']:
+                    input_points.append((int(rect[0]/self.thumb_ratio), int(rect[1]/self.thumb_ratio)))
+                elif self.graph['vertices'][v]['is_output']:
+                    output_points.append((int(rect[0]/self.thumb_ratio), int(rect[1]/self.thumb_ratio)))
                 points.append((int(rect[0]/self.thumb_ratio), int(rect[1]/self.thumb_ratio)))
         dc.DrawPointList(points, wx.Pen(self.background_color, 20))
+        dc.SetPen(wx.Pen(style['input_color'], 1))
+        dc.SetBrush(wx.Brush(style['input_color'], wx.BRUSHSTYLE_TRANSPARENT))
+        for p in input_points:
+            dc.DrawCircle(p, 2)
+        dc.SetPen(wx.Pen(style['output_color'], 1))
+        dc.SetBrush(wx.Brush(style['output_color'], wx.BRUSHSTYLE_TRANSPARENT))
+        for p in output_points:
+            dc.DrawCircle(p, 2)
+        # dc.DrawPointList(input_points, wx.Pen(style['input_color'], 20))
+        # dc.DrawPointList(output_points, wx.Pen(style['output_color'], 20))
         target_rect = self.get_canvas_view()
         thumb_rect = (math.floor(float(target_rect[0])/self.thumb_ratio),
                       math.floor(float(target_rect[1])/self.thumb_ratio),
@@ -351,6 +367,22 @@ class ChildFrame(wx.MDIChildFrame):
                 self.property.Append(data_prop)
         self.property.FitColumns()
 
+    def draw_vertice(self, vertice):
+        '''draw a vertice'''
+        dc = self.dc
+        if self.graph['vertices'][vertice]['is_input']:
+            dc.SetBrush(wx.Brush(style['input_color']))
+            dc.DrawRoundedRectangle(self.graph['vertices'][vertice]['rect'], 3)
+            dc.SetBrush(wx.Brush(self.foreground_color))
+        elif self.graph['vertices'][vertice]['is_output']:
+            dc.SetBrush(wx.Brush(style['output_color']))
+            dc.DrawRoundedRectangle(self.graph['vertices'][vertice]['rect'], 3)
+            dc.SetBrush(wx.Brush(self.foreground_color))
+        else:
+            dc.DrawRoundedRectangle(self.graph['vertices'][vertice]['rect'], 3)
+        dc.DrawText(self.graph['vertices'][vertice]['type'],
+                    to_int(self.graph['vertices'][vertice]['label']))
+
     def on_paint(self, _):
         '''paint main view'''
 
@@ -396,9 +428,7 @@ class ChildFrame(wx.MDIChildFrame):
 
                 for corner in corners:
                     if ChildFrame.include(view, corner):
-                        dc.DrawRoundedRectangle(self.graph['vertices'][vertice]['rect'], 3)
-                        dc.DrawText(self.graph['vertices'][vertice]['type'],
-                                    to_int(self.graph['vertices'][vertice]['label']))
+                        self.draw_vertice(vertice)
                         break
         else:
             for edge in self.graph['edges']:
@@ -409,16 +439,12 @@ class ChildFrame(wx.MDIChildFrame):
             for vertice in self.graph['vertices']:
                 vertice_rect = self.graph['vertices'][vertice]['rect']
                 corners = ChildFrame.corners(vertice_rect)
-                dc.DrawRoundedRectangle(self.graph['vertices'][vertice]['rect'], 3)
-                dc.DrawText(self.graph['vertices'][vertice]['type'],
-                            to_int(self.graph['vertices'][vertice]['label']))
+                self.draw_vertice(vertice)
 
         if self.graph['selected'] in self.graph['vertices']:
             vertice = self.graph['vertices'][self.graph['selected']]
             dc.SetPen(wx.Pen("red", 2))
-            dc.DrawRoundedRectangle(vertice['rect'], 3)
-            dc.DrawText(vertice['type'], to_int(vertice['label']))
-
+            self.draw_vertice(self.graph['selected'])
             for edge in vertice['edges']:
                 if edge in self.graph['edges']:
                     dc.DrawSpline(self.graph['edges'][edge]['spline'])

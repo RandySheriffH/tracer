@@ -1,6 +1,6 @@
 # Licensed under the MIT license.
 '''Render a model graph'''
-#pylint: disable=no-member,import-outside-toplevel,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,protected-access,anomalous-backslash-in-string
+#pylint: disable=no-member,import-outside-toplevel,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,protected-access,anomalous-backslash-in-string,line-too-long
 
 import math
 
@@ -13,7 +13,9 @@ style = {
     'point_space': 5,
     'arrow_length': 8,
     'arrow_width': 3,
-    'max_vertices_per_level': 200
+    'max_vertices_per_level': 200,
+    'input_color': 'green',
+    'output_color': 'yellow',
     }
 
 def render(device_context, graph):
@@ -27,7 +29,7 @@ def render(device_context, graph):
         edge_map = {}
 
         for vertice in graph['vertices']:
-            topology[vertice] = {'inputs':set(), 'outputs': set(), 'level': 0}
+            topology[vertice] = {'inputs': set(), 'outputs': set(), 'level': 0}
 
             for output in graph['vertices'][vertice]['outputs']:
                 edge_map[output] = vertice
@@ -381,6 +383,15 @@ def render(device_context, graph):
     else:
         graph['size'] = (len(offset_per_level) * 2 * style['outter_padding'][0] +
                          len(offset_per_level) * max_rect_width, max_width)
+
+    for vertice in topology:
+        if graph['vertices'][vertice]['is_const'] is True:
+            graph['vertices'][vertice]['is_input'] = False
+            graph['vertices'][vertice]['is_output'] = False
+        else:
+            input_count = sum([0 if graph['vertices'][v]['is_const'] else 1 for v in topology[vertice]['inputs']])
+            graph['vertices'][vertice]['is_input'] = input_count == 0
+            graph['vertices'][vertice]['is_output'] = len(topology[vertice]['outputs']) == 0
 
     graph['selected'] = list(graph['vertices'].keys())[0]
     graph['rendered'] = True

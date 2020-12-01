@@ -41,6 +41,10 @@ class Parser:
         '''return model type in string'''
         raise NotImplementedError('Not implemented!')
 
+    def is_const(self, operator):
+        '''return true is the op is a constant'''
+        raise NotImplementedError('Not implemented!')
+
     @staticmethod
     def fill_output_map(graph):
         '''extract all output and map them to ops'''
@@ -118,7 +122,8 @@ class Parser:
                        'attrs': attrs,
                        'inputs': inputs,
                        'outputs': outputs,
-                       'edges': set()}
+                       'edges': set(),
+                       'is_const': self.is_const(operator)}
 
             for iter_ii, output in enumerate(outputs):
                 if output_shapes[iter_ii] is not None:
@@ -250,6 +255,8 @@ class OnnxParser(Parser):
                         num += self.count_ops(embedded_graph)
         return num
 
+    def is_const(self, operator):
+        return operator.op_type.strip() == 'Constant'
 
 class TFParser(Parser):
     '''parser for tensorflow graph def'''
@@ -424,6 +431,8 @@ class TFParser(Parser):
             num += self.count_ops(sub_tf_graph)
         return num
 
+    def is_const(self, operator):
+        return operator.type.strip() == 'Const'
 
 class TFCKParser(TFParser):
     '''parser for tensorflow checkpoint'''
@@ -513,6 +522,9 @@ class TorchParser(Parser):
 
     def get_type(self):
         return 'pytorch'
+
+    def is_const(self, operator):
+        return operator.kind().strip() == 'onnx::Constant'
 
 
 def parse(model_path, init_progress_callback, updage_progress_callback):
