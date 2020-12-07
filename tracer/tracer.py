@@ -1,13 +1,12 @@
 # Licensed under the MIT license.
 '''tracer graphic user interface by wx'''
-#pylint: disable=no-member,import-outside-toplevel,relative-beyond-top-level,too-many-instance-attributes,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,protected-access,no-name-in-module,too-few-public-methods,invalid-name,chained-comparison,line-too-long
+#pylint: disable=no-member,import-outside-toplevel,relative-beyond-top-level,too-many-instance-attributes,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,protected-access,no-name-in-module,too-few-public-methods,invalid-name,chained-comparison,line-too-long,broad-except
 
 import os
 import sys
 import math
 import wx
 from wx import Point, propgrid
-import graphviz
 from .parsers import parse
 from .render import render, style, directions
 from .utils import to_int, pwd, create_temp, remove_temp, UnknownFormatError
@@ -214,8 +213,6 @@ class ChildFrame(wx.MDIChildFrame):
         dc.SetBrush(wx.Brush(style['output_color'], wx.BRUSHSTYLE_TRANSPARENT))
         for p in output_points:
             dc.DrawCircle(p, 2)
-        # dc.DrawPointList(input_points, wx.Pen(style['input_color'], 20))
-        # dc.DrawPointList(output_points, wx.Pen(style['output_color'], 20))
         target_rect = self.get_canvas_view()
         thumb_rect = (math.floor(float(target_rect[0])/self.thumb_ratio),
                       math.floor(float(target_rect[1])/self.thumb_ratio),
@@ -599,13 +596,10 @@ class MainFrame(wx.MDIParentFrame):
         try:
             graph = parse(model_path, init_progress_func, update_progress_func)
             cancelled = progress.WasCancelled()
-        except graphviz.backend.ExecutableNotFound:
-            wx.MessageDialog(self, 'Please install latest graphviz from \
-                                    www.graphviz.org and add it to PATH').ShowModal()
         except UnknownFormatError as err:
             wx.MessageDialog(self, str(err)).ShowModal()
-        #except Exception as err:
-        #    wx.MessageDialog(self, 'Caught exception: ' + str(err)).ShowModal()
+        except Exception as err:
+            wx.MessageDialog(self, 'Caught exception: ' + str(err)).ShowModal()
 
         progress.Destroy()
         if cancelled is False:

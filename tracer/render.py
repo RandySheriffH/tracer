@@ -50,36 +50,14 @@ def render(device_context, graph):
                     stack.append(vertice)
                     visited.add(vertice)
             while stack:
-                vertice = stack[-1]
-                level = topology[vertice]['level'] + 1
+                top = stack[-1]
                 del stack[-1]
-                for downstream in topology[vertice]['outputs']:
-                    if downstream in visited:
-                        continue
-                    topology[downstream]['level'] = max(topology[downstream]['level'], level)
-                    stack.append(downstream)
-                    visited.add(downstream)
-
-            stack = []
-            visited = set()
-            for vertice in topology:
-                if not topology[vertice]['outputs']:
-                    stack.append(vertice)
-                    visited.add(vertice)
-            while stack:
-                vertice = stack[-1]
-                all_outputs_visited = True
-                for output in topology[vertice]['outputs']:
-                    if output not in visited:
-                        stack.append(output)
-                        visited.add(output)
-                        all_outputs_visited = False
-                if all_outputs_visited:
-                    if topology[vertice]['outputs']:
-                        min_level = min([topology[output]['level']\
-                            for output in topology[vertice]['outputs']]) - 1
-                        topology[vertice]['level'] = max(min_level, topology[vertice]['level'])
-                    del stack[-1]
+                for vertice in topology[top]['outputs']:
+                    non_visited = sum([0 if input_ in visited else 1 for input_ in topology[vertice]['inputs']])
+                    if not non_visited:
+                        topology[vertice]['level'] = max([topology[input_]['level'] for input_ in topology[vertice]['inputs']]) + 1
+                        stack.append(vertice)
+                        visited.add(vertice)
 
         fill_level()
 
