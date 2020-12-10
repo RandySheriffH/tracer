@@ -297,7 +297,7 @@ class ChildFrame(wx.MDIChildFrame):
 
         if self.graph['selected'] in self.graph['vertices']:
             vertice = self.graph['vertices'][self.graph['selected']]
-            if not ChildFrame.intersect(target_rect, vertice['rect']):
+            if 'rect' in vertice and not ChildFrame.intersect(target_rect, vertice['rect']):
                 self.canvas.Scroll(vertice['rect'][0]/self.x_units, vertice['rect'][1]/self.y_units)
 
     def set_property(self):
@@ -512,6 +512,9 @@ class MainFrame(wx.MDIParentFrame):
         self.ToolBar.AddTool(5, 'rotate',
                              wx.Bitmap(os.path.join(pwd(), 'icons', 'rotate.png')),
                              'roate graph clockwise')
+        self.ToolBar.AddTool(6, 'run',
+                             wx.Bitmap(os.path.join(pwd(), 'icons', 'run.png')),
+                             'run model')
         self.SetToolBar(self.ToolBar)
         self.ToolBar.Realize()
         self.ToolBar.Bind(wx.EVT_TOOL, self.on_toolbar_clicked)
@@ -614,6 +617,10 @@ class MainFrame(wx.MDIParentFrame):
         '''handle toolbar event'''
         tid = event.GetId()
 
+        frame = self.GetActiveChild()
+        if frame is None:
+            return
+
         if tid in [1, 2]:
             while True:
                 if tid == 1:
@@ -636,29 +643,22 @@ class MainFrame(wx.MDIParentFrame):
                     break
 
         elif tid == 3:
-            frame = self.GetActiveChild()
-            if frame is None:
-                return
             frame.pen_color = wx.Colour('gray')
             frame.foreground_color = wx.Colour('white')
             frame.background_color = wx.Colour(86, 86, 87)
             frame.Refresh()
 
         elif tid == 4:
-            frame = self.GetActiveChild()
-            if frame is None:
-                return
             frame.pen_color = wx.Colour('black')
             frame.foreground_color = wx.Colour('gray')
             frame.background_color = wx.Colour('white')
             frame.Refresh()
 
         elif tid == 5:
-            frame = self.GetActiveChild()
-            if frame is None:
-                return
             frame.rotate()
 
+        elif tid == 6:
+            pass
 
 def show():
     '''run tracer'''

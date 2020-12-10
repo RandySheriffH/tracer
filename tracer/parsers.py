@@ -138,6 +138,7 @@ class Parser:
             if ret is False:
                 return None
 
+        graph['selected'] = list(graph['vertices'].keys())[0]
         return graph
 
 
