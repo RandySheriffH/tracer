@@ -119,7 +119,7 @@ class ChildFrame(wx.MDIChildFrame):
         self.thumbnail.Bind(wx.EVT_LEFT_DOWN, self.on_key_down)
         self.thumb_dc = None
         self.thumb_ratio = 20
-        self.thumb_max_len = 300
+        self.thumb_max_len = 30000
         self.Maximize()
         self.Show(True)
         canvas_size = self.canvas.GetSize()

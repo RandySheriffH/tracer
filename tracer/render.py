@@ -53,6 +53,8 @@ def render(device_context, graph):
                 top = stack[-1]
                 del stack[-1]
                 for vertice in topology[top]['outputs']:
+                    if vertice in visited:
+                        continue
                     non_visited = sum([0 if input_ in visited else 1 for input_ in topology[vertice]['inputs']])
                     if not non_visited:
                         topology[vertice]['level'] = max([topology[input_]['level'] for input_ in topology[vertice]['inputs']]) + 1
