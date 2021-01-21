@@ -118,8 +118,10 @@ class ChildFrame(wx.MDIChildFrame):
         self.thumbnail.Bind(wx.EVT_PAINT, self.on_paint_thumb)
         self.thumbnail.Bind(wx.EVT_LEFT_DOWN, self.on_key_down)
         self.thumb_dc = None
-        self.thumb_ratio = 20
-        self.thumb_max_len = 30000
+        #self.thumb_ratio = 20
+        self.thumb_ratio_x = 20
+        self.thumb_ratio_y = 20
+        self.thumb_max_len = 300
         self.Maximize()
         self.Show(True)
         canvas_size = self.canvas.GetSize()
@@ -151,25 +153,21 @@ class ChildFrame(wx.MDIChildFrame):
 
     def cacl_thumb_size(self):
         '''calculate size of thumbnail'''
+        canvas_size = self.canvas.GetSize()
         graph_size = self.graph['size']
-        target_size = (math.ceil(float(graph_size[0])/self.thumb_ratio),
-                       math.ceil(float(graph_size[1])/self.thumb_ratio))
+        target_size = (math.ceil(float(graph_size[0])/self.thumb_ratio_x),
+                       math.ceil(float(graph_size[1])/self.thumb_ratio_y))
 
-        if target_size[0] <= self.thumb_max_len and target_size[1] <= self.thumb_max_len:
+        if target_size[0] <= canvas_size[0] and target_size[1] <= canvas_size[1]:
             return target_size
 
-        width, height = target_size[0], target_size[1]
-        width_height_ratio = float(graph_size[0]) / graph_size[1]
-        if width > self.thumb_max_len:
-            width = self.thumb_max_len
-            height = width / width_height_ratio
+        if target_size[0] > canvas_size[0]:
+            self.thumb_ratio_x = int(graph_size[0]/canvas_size[0])
+            return (canvas_size[0], target_size[1])
+        if target_size[1] > canvas_size[1]:
+            self.thumb_ratio_y = int(graph_size[1]/canvas_size[1])
+            return (target_size[0], canvas_size[1])
 
-        if height > self.thumb_max_len:
-            height = self.thumb_max_len
-            width = height * width_height_ratio
-
-        self.thumb_ratio = math.ceil(float(graph_size[0])/width)
-        return (math.ceil(width), math.ceil(height))
 
     def get_canvas_view(self):
         '''get rect of the view'''
@@ -183,7 +181,7 @@ class ChildFrame(wx.MDIChildFrame):
     def on_key_down(self, e):
         '''handle left mouse key down event on thumbnail'''
         pos = e.GetLogicalPosition(self.thumb_dc)
-        target_pos = (pos[0] * self.thumb_ratio, pos[1] * self.thumb_ratio)
+        target_pos = (pos[0] * self.thumb_ratio_x, pos[1] * self.thumb_ratio_y)
         target_rect = self.get_canvas_view()
         if not ChildFrame.include(target_rect, target_pos):
             self.canvas.Scroll(target_pos[0]/self.x_units, target_pos[1]/self.y_units)
@@ -200,10 +198,10 @@ class ChildFrame(wx.MDIChildFrame):
             if 'rect' in self.graph['vertices'][v]:
                 rect = self.graph['vertices'][v]['rect']
                 if self.graph['vertices'][v]['is_input']:
-                    input_points.append((int(rect[0]/self.thumb_ratio), int(rect[1]/self.thumb_ratio)))
+                    input_points.append((int(rect[0]/self.thumb_ratio_x), int(rect[1]/self.thumb_ratio_y)))
                 elif self.graph['vertices'][v]['is_output']:
-                    output_points.append((int(rect[0]/self.thumb_ratio), int(rect[1]/self.thumb_ratio)))
-                points.append((int(rect[0]/self.thumb_ratio), int(rect[1]/self.thumb_ratio)))
+                    output_points.append((int(rect[0]/self.thumb_ratio_x), int(rect[1]/self.thumb_ratio_y)))
+                points.append((int(rect[0]/self.thumb_ratio_x), int(rect[1]/self.thumb_ratio_y)))
         dc.DrawPointList(points, wx.Pen(self.background_color, 20))
         dc.SetPen(wx.Pen(style['input_color'], 1))
         dc.SetBrush(wx.Brush(style['input_color'], wx.BRUSHSTYLE_TRANSPARENT))
@@ -214,15 +212,15 @@ class ChildFrame(wx.MDIChildFrame):
         for p in output_points:
             dc.DrawCircle(p, 2)
         target_rect = self.get_canvas_view()
-        thumb_rect = (math.floor(float(target_rect[0])/self.thumb_ratio),
-                      math.floor(float(target_rect[1])/self.thumb_ratio),
-                      math.floor(float(target_rect[2])/self.thumb_ratio),
-                      math.floor(float(target_rect[3])/self.thumb_ratio))
+        thumb_rect = (math.floor(float(target_rect[0])/self.thumb_ratio_x),
+                      math.floor(float(target_rect[1])/self.thumb_ratio_y),
+                      math.floor(float(target_rect[2])/self.thumb_ratio_x),
+                      math.floor(float(target_rect[3])/self.thumb_ratio_y))
         dc.SetPen(wx.Pen('red', 1))
         dc.SetBrush(wx.Brush('red', wx.BRUSHSTYLE_TRANSPARENT))
         dc.DrawRectangle(thumb_rect)
         rect = self.graph['vertices'][self.graph['selected']]['rect']
-        dc.DrawCircle(Point((int(rect[0]/self.thumb_ratio), int(rect[1]/self.thumb_ratio))), 2)
+        dc.DrawCircle(Point((int(rect[0]/self.thumb_ratio_x), int(rect[1]/self.thumb_ratio_y))), 2)
 
     def get_subgraph(self, graph, name):
         '''get embedded graph'''
