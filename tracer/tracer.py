@@ -468,6 +468,7 @@ class ChildFrame(wx.MDIChildFrame):
         '''rotate rendering layout clockwise'''
         self.graph['direction'] = (self.graph['direction'] + 1) % len(directions)
         self.graph['rendered'] = False
+        self.thumb_ratio_x, self.thumb_ratio_y = self.thumb_ratio_y, self.thumb_ratio_x
         self.Refresh()
 
 class MainFrame(wx.MDIParentFrame):
