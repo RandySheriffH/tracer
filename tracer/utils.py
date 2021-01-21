@@ -36,3 +36,37 @@ class UnknownFormatError(RuntimeError):
     '''raise on unsupported model format'''
     def __init__(self, message):
         RuntimeError.__init__(self, message)
+
+def to_array(s, to_type):
+    '''string to array'''
+    s = s.strip()
+    stk = []
+    digits = [str(i) for i in range(10)] + ['e', '+', '-', '.']
+    number = ''
+    for c in s:
+        #c = c.strip()
+        if c == '': continue
+        elif c in digits: number += c
+        elif c == ',' or c == ' ':
+            if number != '':
+                stk.append(number)
+                number = ''
+        elif c == ']':
+            if number != '':
+                stk.append(number)
+                number = ''
+            a = []
+            while True:
+                top = stk[-1]
+                del stk[-1]
+                if top == '[': 
+                    stk.append(a)
+                    break
+                else:
+                    if type(top) is list:
+                        a.insert(0, top)
+                    else: a.insert(0, to_type(top))
+        elif c == '[':
+            stk.append(c)
+        else: raise Exception("invalid char: " + c)
+    return stk[0]

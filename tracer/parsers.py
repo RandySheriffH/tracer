@@ -1,6 +1,6 @@
 # Licensed under the MIT license.
 '''Parers to read models'''
-#pylint: disable=no-member,import-outside-toplevel,relative-beyond-top-level,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,protected-access,anomalous-backslash-in-string
+#pylint: disable=no-member,import-outside-toplevel,relative-beyond-top-level,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,protected-access,anomalous-backslash-in-string,multiple-imports
 
 import os
 from pathlib import Path
@@ -43,6 +43,10 @@ class Parser:
 
     def is_const(self, operator):
         '''return true is the op is a constant'''
+        raise NotImplementedError('Not implemented!')
+
+    def run(self, inputs, fetches):
+        '''run model'''
         raise NotImplementedError('Not implemented!')
 
     @staticmethod
@@ -91,11 +95,11 @@ class Parser:
                                                            max_node_per_graph))
         return None
 
-    @staticmethod
-    def empty_graph():
+    def empty_graph(self):
         '''empty graph in json'''
-        return {'name': '', 'type': '', 'vertices': {}, 'shapes': {}, 'rendered': False,\
-               'types': {}, 'edges': {}, 'selected':'', 'subgraphs':{}, 'map':{}, 'direction': 0}
+        return {'parser': self, 'name': '', 'type': '', 'vertices': {}, 'shapes': {}, 'rendered': False,\
+               'types': {}, 'edges': {}, 'selected':'', 'subgraphs':{}, 'map':{}, 'direction': 0,
+               'inputs': {}, 'fetches': {}}
 
     def parse_graph(self,
                     model_graph,
@@ -104,7 +108,7 @@ class Parser:
                     max_node_per_graph):
         '''parse graph and all embedded'''
 
-        graph = Parser.empty_graph()
+        graph = self.empty_graph()
         graph['name'] = graph_name
         graph['type'] = self.get_type()
         ops = self.get_ops(model_graph)
@@ -149,6 +153,7 @@ class OnnxParser(Parser):
         Parser.__init__(self)
         self.shapes = {}
         self.types = {}
+        self.model_path = ''
 
     def get_ops(self, model_graph):
         return model_graph.node
@@ -237,10 +242,9 @@ class OnnxParser(Parser):
     def load_graph(self, model_path):
         import onnx
         from onnx import shape_inference
+        self.model_path = model_path
         model = shape_inference.infer_shapes(onnx.load(model_path))
-        # model = onnx.load(model_path)
         self.fill_type_shape(model.graph)
-        # print ('model version:', model.model_version)
         return model.graph, self.count_ops(model.graph)
 
     def count_ops(self, graph):
@@ -258,6 +262,15 @@ class OnnxParser(Parser):
 
     def is_const(self, operator):
         return operator.op_type.strip() == 'Constant'
+
+    def run(self, inputs, fetches):
+        import onnxruntime as ort
+        from onnxruntime import SessionOptions
+        sess_option = SessionOptions()
+        sess_option.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
+        sess = ort.InferenceSession(self.model_path, sess_option)
+        return sess.run(fetches, inputs)
+
 
 class TFParser(Parser):
     '''parser for tensorflow graph def'''
@@ -435,6 +448,10 @@ class TFParser(Parser):
     def is_const(self, operator):
         return operator.type.strip() == 'Const'
 
+    def run(self, inputs, fetches):
+        pass
+
+
 class TFCKParser(TFParser):
     '''parser for tensorflow checkpoint'''
 
@@ -466,6 +483,9 @@ class KerasParser(TFParser):
 
     def get_type(self):
         return 'keras'
+
+    def run(self, inputs, fetches):
+        pass
 
 
 class TorchParser(Parser):
@@ -526,6 +546,9 @@ class TorchParser(Parser):
 
     def is_const(self, operator):
         return operator.kind().strip() == 'onnx::Constant'
+
+    def run(self, inputs, fetches):
+        pass
 
 
 def parse(model_path, init_progress_callback, updage_progress_callback):

@@ -9,7 +9,7 @@ import wx
 from wx import Point, propgrid
 from .parsers import parse
 from .render import render, style, directions
-from .utils import to_int, pwd, create_temp, remove_temp, UnknownFormatError
+from .utils import to_int, pwd, create_temp, remove_temp, UnknownFormatError, to_array
 
 
 class About(wx.Dialog):
@@ -327,6 +327,12 @@ class ChildFrame(wx.MDIChildFrame):
             if n in self.graph['types']:
                 subprop = propgrid.StringProperty('Type', 'Type', str(self.graph['types'][n]))
                 self.property.AppendIn(propgrid.PGPropArgCls(prop), subprop)
+            if n in self.graph['inputs']:
+                subprop = propgrid.StringProperty('Value', 'Value', str(self.graph['inputs'][n]))
+                self.property.AppendIn(propgrid.PGPropArgCls(prop), subprop)
+            if n in self.graph['fetches']:
+                subprop = propgrid.StringProperty('Value', 'Value', str(self.graph['fetches'][n]))
+                self.property.AppendIn(propgrid.PGPropArgCls(prop), subprop)
 
         self.property.Append(propgrid.PropertyCategory("Vertice Outputs", "Vertice Outputs"))
         for i, n in enumerate(vertice['outputs']):
@@ -344,6 +350,9 @@ class ChildFrame(wx.MDIChildFrame):
                     consumer = 'Consumer ' + str(ii)
                     subprop = OutputProperty(self, consumer, n, to)
                     self.property.AppendIn(propgrid.PGPropArgCls(prop), subprop)
+            if n in self.graph['fetches']:
+                subprop = propgrid.StringProperty('Value', 'Value', str(self.graph['fetches'][n]))
+                self.property.AppendIn(propgrid.PGPropArgCls(prop), subprop)
 
         self.property.Append(propgrid.PropertyCategory("Vertice Attrs", "Vertice Attrs"))
         for i, n in enumerate(vertice['attrs']):
@@ -472,6 +481,95 @@ class ChildFrame(wx.MDIChildFrame):
         self.graph['rendered'] = False
         self.Refresh()
 
+
+class InputDialog(wx.Dialog):
+    '''dialog to take model inputs'''
+
+    def __init__(self, parent, inputs):
+        super(InputDialog, self).__init__(parent, title = 'Specify input(s) below')
+        self.input_ctrls = {}
+        self.input_values = {}
+        self.box = wx.BoxSizer(wx.VERTICAL)
+        font = self.GetFont()
+        font.SetPointSize(10)
+        self.SetFont(font)
+        for input_ in inputs:
+            line_box = wx.BoxSizer(wx.HORIZONTAL)
+            text = wx.StaticText(self, label=self.get_input_name(input_), size=wx.Size(40,20))
+            line_box.Add(text, 0, wx.ALL|wx.EXPAND, 10)
+
+            if inputs[input_] is None:
+                text_ctrl = wx.TextCtrl(self, size=wx.Size(220,20))
+                line_box.Add(text_ctrl, 0, wx.ALL|wx.EXPAND, 10)
+            else:
+                text_ctrl = wx.TextCtrl(self, value=str(inputs[input_]).strip(), size=wx.Size(220,20))
+                line_box.Add(text_ctrl, 0, wx.ALL|wx.EXPAND, 10)
+
+            astype = wx.StaticText(self, label="as", size=wx.Size(20,20))
+            line_box.Add(astype, 0, wx.ALL|wx.EXPAND, 10)
+
+            all_dtypes = ['uint8', 'uint16', 'uint32', 'uint64', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64']
+            combo = wx.ComboBox(self, size=wx.Size(70,20),
+                choices=all_dtypes)
+            if inputs[input_] is None:
+                combo.SetSelection(8)
+            else:
+                combo.SetSelection(all_dtypes.index(inputs[input_].dtype))
+            line_box.Add(combo, 0, wx.RIGHT|wx.TOP|wx.BOTTOM|wx.EXPAND, 10)
+
+            self.input_ctrls[input_] = (text_ctrl, combo)
+            self.box.Add(line_box, wx.ALL)
+        line_box = wx.BoxSizer(wx.HORIZONTAL)
+        line_box.Add(wx.StaticText(self, label='', size=wx.Size(40,20)))
+        line_box.Add(wx.StaticText(self, label='', size=wx.Size(40,20)))
+        line_box.Add(wx.Button(self, id=wx.ID_CANCEL, label="Cancel", size=wx.Size(120,30)), 0, wx.ALL, 10)
+        ok_btn = wx.Button(self, id=wx.ID_OK, label="Run model", size=wx.Size(120,30))
+        ok_btn.Bind( wx.EVT_BUTTON, self.run_model)
+        line_box.Add(ok_btn, 0, wx.ALL, 10)
+        self.box.Add(line_box, wx.ALL|wx.EXPAND)
+        self.SetSizer(self.box)
+        self.SetSize(wx.Size(450, len(inputs)*40+100))
+        self.Centre()
+
+    def get_input_name(self, input_):
+        '''return trimmed input name'''
+        limit = 10
+        return '...' if len(input_) > limit else '' + input_[:limit] + ':'
+
+    def run_model(self, evt):
+        '''collect all input values'''
+
+        def to_float(c):
+            return float(c)
+
+        import numpy as np
+        for input_ in self.input_ctrls:
+            raw_input = ' '.join([self.input_ctrls[input_][0].GetLineText(i) for i in range(self.input_ctrls[input_][0].GetNumberOfLines())])
+            as_type = self.input_ctrls[input_][1].GetStringSelection()
+            if as_type == 'uint8':
+                self.input_values[input_] = np.array(to_array(raw_input, to_float)).astype(np.uint8)
+            elif as_type == 'uint16':
+                self.input_values[input_] = np.array(to_array(raw_input, to_float)).astype(np.uint16)
+            elif as_type == 'uint32':
+                self.input_values[input_] = np.array(to_array(raw_input, to_float)).astype(np.uint32)
+            elif as_type == 'uint64':
+                self.input_values[input_] = np.array(to_array(raw_input, to_float)).astype(np.uint64)
+            elif as_type == 'int8':
+                self.input_values[input_] = np.array(to_array(raw_input, to_float)).astype(np.int8)
+            elif as_type == 'int16':
+                self.input_values[input_] = np.array(to_array(raw_input, to_float)).astype(np.int16)
+            elif as_type == 'int32':
+                self.input_values[input_] = np.array(to_array(raw_input, to_float)).astype(np.int32)
+            elif as_type == 'int64':
+                self.input_values[input_] = np.array(to_array(raw_input, to_float)).astype(np.int64)
+            elif as_type == 'float32':
+                self.input_values[input_] = np.array(to_array(raw_input, to_float)).astype(np.float32)
+            elif as_type == 'float64':
+                self.input_values[input_] = np.array(to_array(raw_input, to_float)).astype(np.float64)
+
+        evt.Skip()
+
+
 class MainFrame(wx.MDIParentFrame):
     '''main frame'''
 
@@ -527,6 +625,8 @@ class MainFrame(wx.MDIParentFrame):
         self.Search.Bind(wx.EVT_SEARCHCTRL_SEARCH_BTN, self.on_search)
         self.Bind(wx.EVT_CLOSE, MainFrame.on_close)
         self.search_txtctrl = self.Search.FindWindowByName('text')
+        self.statusbar = self.CreateStatusBar(1)
+        self.statusbar.SetStatusText('Select a model to start')
         self.history = []
         self.history_at = -1
         self.Show(True)
@@ -583,6 +683,7 @@ class MainFrame(wx.MDIParentFrame):
                 frame.adjust_canvas()
                 return
         ChildFrame(self, graph['name'], graph).adjust_canvas()
+        self.statusbar.SetStatusText('Rendering ' + graph['name'])
 
     def open(self, model_path):
         '''open a child graph to show model'''
@@ -601,8 +702,8 @@ class MainFrame(wx.MDIParentFrame):
             cancelled = progress.WasCancelled()
         except UnknownFormatError as err:
             wx.MessageDialog(self, str(err)).ShowModal()
-        except Exception as err:
-            wx.MessageDialog(self, 'Caught exception: ' + str(err)).ShowModal()
+        #except Exception as err:
+        #    wx.MessageDialog(self, 'Caught exception: ' + str(err)).ShowModal()
 
         progress.Destroy()
         if cancelled is False:
@@ -658,7 +759,38 @@ class MainFrame(wx.MDIParentFrame):
             frame.rotate()
 
         elif tid == 6:
-            pass
+            fetches = []
+            inputs = {}
+            if len(frame.graph['inputs']) > 0:
+                fetches = list(frame.graph['fetches'].keys())
+                inputs = frame.graph['inputs']
+            else:
+                const_outputs = []
+                import numpy as np
+                for v in frame.graph['vertices']:
+                    vertice = frame.graph['vertices'][v]
+                    if vertice['is_const']:
+                        const_outputs += vertice['outputs']
+                    elif vertice['is_input']:
+                        for input_ in vertice['inputs']:
+                            inputs[input_] = None
+                    for output in vertice['outputs']:
+                        fetches.append(output)
+                '''
+                graph_inputs = []
+                for input_ in inputs:
+                    if input_ not in const_outputs:
+                        graph_inputs.append(input_)
+                '''
+            dialog = InputDialog(self, inputs)
+            if wx.ID_OK == dialog.ShowModal():
+                fetched = frame.graph['parser'].run(dialog.input_values, fetches)
+                self.statusbar.SetStatusText('Inference done, '  + str(len(fetches)) + ' value(s) fetched')
+                frame.graph['inputs'] = dialog.input_values
+                for i, fetch in enumerate(fetches):
+                    frame.graph['fetches'][fetch] = fetched[i]
+                frame.Refresh()
+
 
 def show():
     '''run tracer'''
